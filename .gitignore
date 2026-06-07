@@ -1,0 +1,31 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+
+# --- Node (om verktyg läggs till senare) ---
+node_modules/
+npm-debug.log*
+
+# --- Hemligheter / lokal konfig ---
+# Supabase-nycklar ska ALDRIG checkas in. Ange dem i appen (Admin → Databas),
+# inte i koden. .gitignore skyddar bara filer som inte redan spåras.
+.env
+.env.*
+*.local
+config.local.js
+secrets.*
+
+# --- Exporterade journaler & medlemsdata (personuppgifter – ej i publikt repo) ---
+skjutjournal_*.csv
+skjutjournal_*.xlsx
+*medlem*.csv
+*medlem*.xlsx
+members.*
+medlemmar.*
+
+# --- Föreningens interna källdokument (innehåller namn/e-post/org.nr) ---
+*.docx
+*.pdf
+Skjutjournal.xlsx

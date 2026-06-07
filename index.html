@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Skjutjournal – Hillareds skytteförening</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f4c81">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Skjutjournal">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e9f1f9; --card:#ffffff; --ink:#1d2733; --ink-soft:#5a6b7b;
+    --forest:#1668b0; --forest-d:#0f4c81; --rust:#b1542a; --rust-d:#8f3f1d;
+    --line:#cfddeb; --line-2:#e2ebf4; --good:#1668b0;
+    --shadow:0 1px 2px rgba(15,40,70,.06),0 8px 24px -12px rgba(15,40,70,.30);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--paper);
+    background-image:
+      radial-gradient(120% 90% at 50% -10%, #f4f8fc 0%, rgba(244,248,252,0) 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    color:var(--ink); font-family:"Hanken Grotesk",system-ui,sans-serif; font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px calc(90px + env(safe-area-inset-bottom))}
+
+  header.masthead{position:relative;overflow:hidden;margin:0 -18px 26px;
+    padding:calc(28px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 26px calc(18px + env(safe-area-inset-left));
+    background:radial-gradient(circle at 88% -40%, rgba(177,84,42,.16), transparent 42%),
+      linear-gradient(160deg,var(--forest) 0%,var(--forest-d) 100%);color:#f3ecdd;}
+  header.masthead::after{content:"";position:absolute;right:-90px;top:-90px;width:300px;height:300px;border-radius:50%;
+    background:repeating-radial-gradient(circle, rgba(243,236,221,.10) 0 2px, transparent 2px 26px);pointer-events:none;}
+  .mast-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#aacbe8;font-weight:600;margin:0 0 6px}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0 0 8px;letter-spacing:-.01em}
+  .sub{font-size:13px;color:#c2d7ea;max-width:660px;margin:0}
+  .sub b{color:#eaf2fb;font-weight:600}
+  .mast-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .icon-btn{background:transparent;border:1px solid rgba(243,236,221,.4);color:#f3ecdd;border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;font-size:13px}
+  .icon-btn:hover{background:rgba(243,236,221,.12)}
+  .icon-btn.solid{background:#f3ecdd;color:var(--forest-d);border-color:#f3ecdd}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+  .card-head h2{font-family:"Fraunces",serif;font-weight:600;font-size:19px;margin:0;letter-spacing:-.01em}
+  .card-head .hint{font-size:12px;color:var(--ink-soft);font-weight:500}
+  .card-body{padding:18px 20px}
+
+  label{font-size:12px;font-weight:600;color:var(--ink-soft);letter-spacing:.02em}
+  input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px rgba(22,104,176,.16)}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .btn{font:inherit;font-weight:600;border:none;border-radius:10px;padding:10px 18px;cursor:pointer;transition:transform .08s,filter .15s,background .15s;letter-spacing:.01em}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--forest);color:#f3ecdd}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line)}
+  .btn.ghost:hover{background:#fff}
+  .btn.tiny{padding:5px 12px;font-size:12.5px;border-radius:8px}
+  .btn.big{font-size:17px;padding:14px 22px}
+  .btn.danger{background:transparent;color:var(--rust-d);border:1px solid var(--line)}
+  .btn.danger:hover{background:#fbecdf;border-color:#e7c4ab}
+
+  /* pass settings */
+  .pass{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:760px){.pass{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.pass{grid-template-columns:1fr}}
+
+  /* quick entry */
+  .quick{display:grid;grid-template-columns:2.2fr 1fr auto auto;gap:12px;align-items:end}
+  @media(max-width:680px){.quick{grid-template-columns:1fr;gap:12px}.quick .seg{width:100%}.quick .seg button{flex:1}.quick .btn.big{width:100%}}
+  .quick input#q-skytt{font-size:18px;padding:13px 14px}
+  .quick input#q-skott{font-size:18px;padding:13px 14px;text-align:center;font-variant-numeric:tabular-nums}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
+  .seg button.on{background:var(--forest);color:#f3ecdd}
+
+  /* headline */
+  .headline-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .headline-row .big{font-family:"Fraunces",serif;font-size:clamp(34px,6vw,52px);line-height:1;color:var(--forest-d);font-variant-numeric:tabular-nums}
+  .headline-row .lab{font-size:13px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
+
+  /* session list */
+  .slist{list-style:none;margin:0;padding:0}
+  .slist li{display:flex;align-items:center;gap:8px 10px;padding:11px 2px;border-bottom:1px solid var(--line-2);font-size:15px;flex-wrap:wrap}
+  .slist li:last-child{border-bottom:none}
+  .slist .nm{font-weight:600;flex:1;min-width:120px}
+  .slist .sk{font-variant-numeric:tabular-nums;font-weight:700;color:var(--forest-d)}
+  .slist .meta{color:var(--ink-soft);font-size:12.5px;flex-basis:100%;order:5}
+  .slist .x{cursor:pointer;color:var(--ink-soft);border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:13px}
+  .slist .x:hover{color:var(--rust-d);border-color:#e7c4ab;background:#fbecdf}
+
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;letter-spacing:.02em}
+  .pill.medlem{background:#dcebf8;color:#0f4c81}
+  .pill.gast{background:#f6e3d5;color:#8f3f1d}
+
+  /* admin dashboard */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;box-shadow:var(--shadow)}
+  .stat .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
+  .stat .v{font-family:"Fraunces",serif;font-size:30px;line-height:1;color:var(--forest-d);font-variant-numeric:tabular-nums}
+  .stat .v small{font-family:"Hanken Grotesk";font-size:13px;color:var(--ink-soft);font-weight:500}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--line);white-space:nowrap}
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  tbody tr:hover{background:#f3f8fd}
+  td.num{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap}
+  .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .empty{padding:38px 20px;text-align:center;color:var(--ink-soft)}
+  .empty .big{font-family:"Fraunces",serif;font-size:20px;color:var(--ink);margin-bottom:4px}
+
+  .banner{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:20px;border:1px solid}
+  .banner.warn{background:#fbf1e3;border-color:#eccfa9;color:#7a4a16}
+  .banner.ok{background:#e3eef9;border-color:#bcd6ee;color:#0f4c81}
+  .banner .x{margin-left:auto;cursor:pointer;opacity:.6;font-weight:700;padding:0 4px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;margin-top:5px}
+  .dot.warn{background:var(--rust)} .dot.ok{background:var(--good)}
+
+  footer{text-align:center;color:var(--ink-soft);font-size:12.5px;margin-top:26px;line-height:1.7}
+  .hide{display:none !important}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(35,39,28,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--card);border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);overflow:hidden}
+  .modal h3{font-family:"Fraunces",serif;margin:0;font-size:20px}
+  .modal .m-head{padding:18px 22px;border-bottom:1px solid var(--line-2)}
+  .modal .m-body{padding:18px 22px;display:flex;flex-direction:column;gap:13px}
+  .modal .m-foot{padding:14px 22px;border-top:1px solid var(--line-2);display:flex;justify-content:flex-end;gap:10px}
+  .modal p.hint{font-size:12.5px;color:var(--ink-soft);margin:0}
+  .chart svg{width:100%;height:auto;display:block}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="mast-inner">
+    <div>
+      <p class="eyebrow">Egenkontroll · Anmälningspliktig C-verksamhet</p>
+      <h1>Skjutjournal</h1>
+      <p class="sub"><b>Hillareds skytteförening</b> · org.nr 865000-4503 · finkalibrigt ≤ 9,3 mm · skjutplatser 80/100/200/300 m</p>
+    </div>
+    <div class="mast-actions">
+      <span id="userLabel" class="hide" style="align-self:center;color:#c2d7ea;font-size:12.5px;font-weight:600;margin-right:2px"></span>
+      <button class="icon-btn solid hide" id="adminBtn">🔒 Admin &amp; analys</button>
+      <button class="icon-btn hide" id="logBtn">← Till inmatning</button>
+      <button class="icon-btn hide" id="logoutBtn">Logga ut</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="banner"></div>
+
+  <!-- ============ INLOGGNING ============ -->
+  <div id="authView" class="hide">
+    <div class="card" style="max-width:420px;margin:30px auto 0">
+      <div class="card-head"><h2>Logga in</h2></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--ink-soft);margin:0 0 16px">Journalen kräver inloggning. Konton skapas av föreningens administratör.</p>
+        <div class="field" style="margin-bottom:13px"><label for="authEmail">E-post</label><input type="email" id="authEmail" autocomplete="username" inputmode="email"></div>
+        <div class="field" style="margin-bottom:13px"><label for="authPass">Lösenord</label><input type="password" id="authPass" autocomplete="current-password"></div>
+        <div id="authErr" style="color:var(--rust-d);font-size:13px;min-height:18px;margin-bottom:8px"></div>
+        <button class="btn primary big" id="loginBtn" style="width:100%">Logga in</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LOGGNINGSVY ============ -->
+  <div id="logView" class="hide">
+    <div class="card">
+      <div class="card-head">
+        <h2>Dagens pass</h2>
+        <span class="hint">Ställs in en gång – gäller alla skyttar du registrerar.</span>
+      </div>
+      <div class="card-body">
+        <div class="pass">
+          <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
+          <div class="field"><label for="p-ledare">Skjutledare / ansvarig</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Registrera skytt</h2><span class="hint">Skriv namn + antal skott, tryck Enter.</span></div>
+      <div class="card-body">
+        <div class="quick">
+          <div class="field"><label for="q-skytt">Skytt (namn)</label><input type="text" id="q-skytt" placeholder="För- och efternamn" autocomplete="off"></div>
+          <div class="field"><label for="q-skott">Antal skott</label><input type="number" id="q-skott" min="0" step="1" inputmode="numeric" enterkeyhint="done" placeholder="0"></div>
+          <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
+        </div>
+        <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
+        <div id="moreFields" class="pass hide" style="margin-top:12px">
+          <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
+          <div class="field"><label for="q-anm">Anmärkning</label><input type="text" id="q-anm" placeholder="(valfritt)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>I detta pass</h2><span class="hint" id="passTotal"></span></div>
+      <div class="card-body">
+        <ul class="slist" id="sessionList"></ul>
+        <div class="empty" id="sessionEmpty"><div>Inga skyttar registrerade för <span id="passDateLabel">datumet</span> ännu.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ADMINVY ============ -->
+  <div id="adminView" class="hide">
+    <div class="card">
+      <div class="card-head">
+        <h2>Analys &amp; sammanställning</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label for="a-year" style="margin:0">År</label>
+          <select id="a-year" style="width:auto"></select>
+          <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
+          <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
+          <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="stats">
+          <div class="stat"><div class="label">Totalt antal skott</div><div class="v" id="s-total">0</div></div>
+          <div class="stat"><div class="label">Skjutdagar</div><div class="v" id="s-days">0</div></div>
+          <div class="stat"><div class="label">Aktiva skyttar</div><div class="v" id="s-shooters">0</div></div>
+        </div>
+        <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
+        <div style="margin-top:20px"><div class="label" style="margin-bottom:8px">Skott per skytt</div>
+          <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Alla poster <span id="rowCount" class="hint"></span></h2>
+        <input type="search" id="search" placeholder="Sök skytt, skjutledare…" style="width:auto;min-width:180px;padding:6px 10px">
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Skott</th><th>Skjutledare</th><th>Anm.</th><th></th></tr></thead>
+          <tbody id="adminTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty hide" id="adminEmpty"><div class="big">Inga poster för året</div></div>
+    </div>
+  </div>
+
+  <footer>
+    Underlag för egenkontroll (förordning 1998:901), bullerbedömning (NFS 2005:15) och ev. villkor.
+    Summa per kalenderår. Exportera och arkivera inför varje årsskifte / tillsyn.
+  </footer>
+</div>
+
+<!-- datalists -->
+<datalist id="leaderList">
+  <option>Nils Abrahamson</option><option>Bertil Hagström</option><option>Jan-Erik Ahl</option>
+  <option>Håkan Ragnarsson</option><option>Alexander Ragnarsson</option><option>Urban Blomqvist</option>
+</datalist>
+
+<!-- EDIT MODAL -->
+<div class="modal-bg" id="editModal"><div class="modal">
+  <div class="m-head"><h3>Ändra post</h3></div>
+  <div class="m-body">
+    <div class="field"><label>Datum</label><input type="date" id="e-datum"></div>
+    <div class="field"><label>Skytt</label><input type="text" id="e-skytt" autocomplete="off"></div>
+    <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
+    <div class="field"><label>Skjutledare</label><input type="text" id="e-ledare" list="leaderList"></div>
+    <div class="field"><label>Anmärkning</label><input type="text" id="e-anm"></div>
+  </div>
+  <div class="m-foot"><button class="btn ghost" id="e-cancel">Avbryt</button><button class="btn primary" id="e-save">Spara</button></div>
+</div></div>
+
+<!-- DB SETTINGS MODAL -->
+<div class="modal-bg" id="dbModal"><div class="modal">
+  <div class="m-head"><h3>Databas (Supabase)</h3></div>
+  <div class="m-body">
+    <p class="hint">För delad, beständig journal: skapa gratis projekt på <b>supabase.com</b>, kör SQL:en i README och klistra in värdena. Tomt = lokalt läge (bara denna webbläsare).</p>
+    <div class="field"><label>Supabase URL</label><input id="cfgUrl" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>Supabase anon-nyckel</label><input id="cfgKey" placeholder="eyJhbGciOi..."></div>
+    <p class="hint">Kan även sättas fast i CONFIG högst upp i index.html (gäller då alla enheter).</p>
+  </div>
+  <div class="m-foot"><button class="btn ghost" id="cfgCancel">Stäng</button><button class="btn primary" id="cfgSave">Spara &amp; ladda om</button></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+/* ============================================================
+   CONFIG – med inloggning (Supabase Auth) och låst RLS är det tryggt att
+   lägga URL och anon-nyckel direkt här, även i ett publikt repo. Nyckeln
+   ger ingen åtkomst utan giltig inloggning. Lämnas tomt körs lokalt läge.
+   ============================================================ */
+const CONFIG = {
+  SUPABASE_URL: "",        // "https://abcd.supabase.co"
+  SUPABASE_ANON_KEY: ""    // publik anon-nyckel
+};
+
+/* Föreningsuppgifter – följer med i exporter (krav för godkänd journal) */
+const ORG = {
+  namn:"Hillareds skytteförening", orgnr:"865000-4503",
+  fastighet:"Svenljunga Gälared 6:2", tillsyn:"Svenljunga kommun, miljö- och byggenheten",
+  verksamhet:"Finkalibrigt skytte utomhus, kaliber upp till 9,3 mm",
+  skjutplatser:"80, 100, 200 och 300 m",
+  provningsniva:"Anmälningspliktig C-verksamhet (miljöprövningsförordningen 2013:251)",
+  skjutbaneansvarig:"Bertil Hagström",
+};
+
+const LS = { url:localStorage.getItem("hskf_url")||"", key:localStorage.getItem("hskf_key")||"" };
+const URL_ = CONFIG.SUPABASE_URL || LS.url;
+const KEY_ = CONFIG.SUPABASE_ANON_KEY || LS.key;
+const TABLE = "skjuttillfallen";
+const REMOTE = !!(URL_ && KEY_);
+const sb = REMOTE ? supabase.createClient(URL_, KEY_) : null;
+
+let entries = [];
+let authed = false;
+let isAdmin = false;
+
+const $ = s => document.querySelector(s);
+const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
+const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today = () => new Date().toISOString().slice(0,10);
+
+/* ---------- data layer ---------- */
+const local = {
+  read(){ try{return JSON.parse(localStorage.getItem("hskf_entries")||"[]");}catch{return [];} },
+  write(a){ localStorage.setItem("hskf_entries", JSON.stringify(a)); }
+};
+async function loadAll(){
+  if(REMOTE){
+    const {data,error}=await sb.from(TABLE).select("*").order("datum",{ascending:false});
+    if(error){ showBanner("warn","Kunde inte läsa databasen: "+error.message); return; }
+    entries=data||[];
+  } else { entries=local.read(); }
+  entries.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+}
+async function addRow(row){
+  if(REMOTE){ const {data,error}=await sb.from(TABLE).insert(row).select(); if(error)throw error; return data&&data[0]; }
+  row.id=crypto.randomUUID(); const a=local.read(); a.push(row); local.write(a); return row;
+}
+async function updateRow(id,row){
+  if(REMOTE){ const {error}=await sb.from(TABLE).update(row).eq("id",id); if(error)throw error; }
+  else { const a=local.read(); const i=a.findIndex(e=>e.id===id); if(i>-1)a[i]={...a[i],...row}; local.write(a); }
+}
+async function delRow(id){
+  if(REMOTE){ const {error}=await sb.from(TABLE).delete().eq("id",id); if(error){alert("Kunde inte radera: "+error.message);return false;} }
+  else { local.write(local.read().filter(e=>e.id!==id)); }
+  return true;
+}
+
+/* ---------- pass settings (kom ihåg) ---------- */
+const pass = JSON.parse(localStorage.getItem("hskf_pass")||"null") || {datum:today(),ledare:""};
+function savePass(){ localStorage.setItem("hskf_pass", JSON.stringify(pass)); }
+function applyPassToForm(){
+  $("#p-datum").value=pass.datum||today();
+  $("#p-ledare").value=pass.ledare||"";
+  $("#passDateLabel").textContent=pass.datum||today();
+}
+
+/* ---------- helpers ---------- */
+function yearOf(e){ return e.datum?e.datum.slice(0,4):""; }
+function currentYearStr(){ return String(new Date().getFullYear()); }
+function entriesForYear(y){ return entries.filter(e=>yearOf(e)===String(y)); }
+
+/* ---------- LOG VIEW render ---------- */
+function renderLog(){
+  const d=pass.datum||today();
+  $("#passDateLabel").textContent=d;
+  const rows=entries.filter(e=>e.datum===d).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+  const ul=$("#sessionList"); ul.innerHTML="";
+  $("#sessionEmpty").style.display=rows.length?"none":"block";
+  let ptot=0;
+  rows.forEach(e=>{
+    ptot+=(+e.antal_skott||0);
+    const li=document.createElement("li");
+    li.innerHTML=`<span class="nm">${esc(e.skytt)}</span>
+      <span class="sk">${fmt(e.antal_skott)} skott</span>
+      <span class="x" data-del="${e.id}">✕</span>
+      ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
+    ul.appendChild(li);
+  });
+  $("#passTotal").textContent=rows.length?`${fmt(ptot)} skott · ${rows.length} skyttar`:"";
+}
+
+/* ---------- ADMIN render ---------- */
+function refreshYears(){
+  const sel=$("#a-year"); const set=new Set([currentYearStr()]);
+  entries.forEach(e=>{const y=yearOf(e); if(y)set.add(y);});
+  const arr=[...set].sort((a,b)=>b.localeCompare(a)); const prev=sel.value;
+  sel.innerHTML=arr.map(y=>`<option>${y}</option>`).join("");
+  if(prev&&arr.includes(prev))sel.value=prev;
+}
+function barChart(pairs,unitColor){
+  const max=Math.max(1,...pairs.map(p=>p[1]));
+  const W=Math.max(pairs.length*46,300), H=160, pad=26, bw=W/pairs.length;
+  let bars="";
+  pairs.forEach((p,i)=>{
+    const h=(p[1]/max)*(H-pad-20); const x=i*bw+bw*0.18; const w=bw*0.64; const yv=H-pad-h;
+    bars+=`<rect x="${x}" y="${yv}" width="${w}" height="${h}" rx="3" fill="${unitColor}"/>`;
+    if(p[1]>0)bars+=`<text x="${x+w/2}" y="${yv-5}" text-anchor="middle" font-size="11" fill="#5c5e4f" font-family="Hanken Grotesk">${fmt(p[1])}</text>`;
+    bars+=`<text x="${x+w/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#5c5e4f" font-family="Hanken Grotesk">${esc(p[0])}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><line x1="0" y1="${H-pad}" x2="${W}" y2="${H-pad}" stroke="#d8cfba"/>${bars}</svg>`;
+}
+function renderAdmin(){
+  refreshYears();
+  const y=$("#a-year").value||currentYearStr();
+  const ye=entriesForYear(y);
+  const tot=ye.reduce((s,e)=>s+(+e.antal_skott||0),0);
+  const days=new Set(ye.map(e=>e.datum)).size;
+  const shooters=new Set(ye.map(e=>(e.skytt||"").trim().toLowerCase()).filter(Boolean));
+  $("#s-total").textContent=fmt(tot);
+  $("#s-days").textContent=fmt(days);
+  $("#s-shooters").textContent=fmt(shooters.size);
+  // per month
+  const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
+  const msum=Array(12).fill(0);
+  ye.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
+  $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#1668b0");
+  // per shooter
+  const map={};
+  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,dagar:new Set()}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum);});
+  const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
+  $("#shooterTbody").innerHTML=list.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td></tr>`).join("")||`<tr><td colspan="3" style="color:var(--ink-soft)">Inga poster</td></tr>`;
+  renderAdminTable();
+}
+function renderAdminTable(){
+  const y=$("#a-year").value||currentYearStr();
+  const q=$("#search").value.trim().toLowerCase();
+  let rows=entriesForYear(y);
+  if(q)rows=rows.filter(e=>`${e.skytt} ${e.skjutledare} ${e.anmarkning}`.toLowerCase().includes(q));
+  rows.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+  $("#rowCount").textContent=`(${rows.length})`;
+  $("#adminEmpty").classList.toggle("hide",rows.length>0);
+  $("#adminTbody").innerHTML=rows.map(e=>{
+    return `<tr>
+      <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td>
+      <td class="num">${fmt(e.antal_skott)}</td><td>${esc(e.skjutledare)}</td>
+      <td style="color:var(--ink-soft)">${esc(e.anmarkning)}</td>
+      <td><div class="row-actions">
+        <button class="btn ghost tiny" data-edit="${e.id}">Ändra</button>
+        <button class="btn danger tiny" data-del2="${e.id}">Radera</button>
+      </div></td></tr>`;
+  }).join("");
+}
+
+/* ---------- shared ---------- */
+function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"))renderAdmin(); }
+
+/* ---------- quick add ---------- */
+async function quickAdd(){
+  if(!(pass.ledare||"").trim()){
+    showBanner("warn","Ange <b>skjutledare</b> för dagens pass innan du registrerar skyttar – ansvarig krävs för en giltig journalpost.",4000);
+    $("#p-ledare").focus(); return;
+  }
+  const skytt=$("#q-skytt").value.trim(); const skott=$("#q-skott").value;
+  if(!skytt){ $("#q-skytt").focus(); return; }
+  if(skott===""||+skott<0){ $("#q-skott").focus(); return; }
+  const moreOpen=!$("#moreFields").classList.contains("hide");
+  const row={
+    datum:pass.datum||today(), skytt,
+    antal_skott:+skott, skjutledare:(moreOpen&&$("#q-ledare").value.trim())||pass.ledare,
+    anmarkning:(moreOpen&&$("#q-anm").value.trim())||""
+  };
+  $("#q-add").disabled=true;
+  try{
+    const saved=await addRow(row);
+    if(REMOTE){ await loadAll(); } else { entries.unshift(saved); }
+    renderAll();
+    // reset for next shooter
+    $("#q-skytt").value=""; $("#q-skott").value=""; $("#q-anm").value="";
+    $("#q-skytt").focus();
+  }catch(err){ alert("Kunde inte spara: "+err.message); }
+  finally{ $("#q-add").disabled=false; }
+}
+
+/* ---------- exports (godkännandeklara) ---------- */
+function exportHeaderRows(y){
+  return [
+    ["Skjutjournal – "+ORG.namn],
+    ["Org.nr",ORG.orgnr],
+    ["Skjutbana / fastighet",ORG.fastighet],
+    ["Tillsynsmyndighet",ORG.tillsyn],
+    ["Verksamhet",ORG.verksamhet],
+    ["Skjutplatser",ORG.skjutplatser],
+    ["Prövningsnivå",ORG.provningsniva],
+    ["Journalår",String(y)],
+    ["Utskriven",new Date().toLocaleString("sv-SE")],
+    [],
+  ];
+}
+function summaryRows(ye,y){
+  const tot=ye.reduce((s,e)=>s+(+e.antal_skott||0),0);
+  const days=new Set(ye.map(e=>e.datum)).size;
+  const shooters=new Set(ye.map(e=>(e.skytt||"").trim().toLowerCase()).filter(Boolean)).size;
+  const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
+  const msum=Array(12).fill(0); ye.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1;if(m>=0)msum[m]+=(+e.antal_skott||0);});
+  const r=[[],["SAMMANSTÄLLNING "+y],
+    ["Totalt antal skott",tot],["Antal poster",ye.length],["Antal skjutdagar",days],
+    ["Antal aktiva skyttar",shooters],
+    [],["Skott per månad"]];
+  months.forEach((m,i)=>r.push([m,msum[i]]));
+  r.push([],["Sammanställt av skjutbaneansvarig",ORG.skjutbaneansvarig],
+    ["Datum","______________"],["Underskrift","______________"],
+    [],["Hänvisningar","Förordning (1998:901) om egenkontroll · NFS 2005:15 (buller) · FAP 525-1 / SäkB"]);
+  return r;
+}
+function logHeader(){ return ["Datum","Skytt","Antal skott","Skjutledare/ansvarig","Anmärkning"]; }
+function logRows(ye){
+  return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
+    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,e.skjutledare,e.anmarkning]);
+}
+$("#exportCsv").addEventListener("click",()=>{
+  const y=$("#a-year").value; const ye=entriesForYear(y);
+  const aoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
+    [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)],
+    ...summaryRows(ye,y)];
+  const csv=aoa.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  dl(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),`skjutjournal_${y}.csv`);
+});
+$("#exportXlsx").addEventListener("click",()=>{
+  const y=$("#a-year").value; const ye=entriesForYear(y);
+  const wb=XLSX.utils.book_new();
+  const jaoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
+    [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)]];
+  const ws1=XLSX.utils.aoa_to_sheet(jaoa);
+  ws1["!cols"]=[{wch:12},{wch:24},{wch:12},{wch:22},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Skjutjournal");
+  const ws2=XLSX.utils.aoa_to_sheet(summaryRows(ye,y).slice(1));
+  ws2["!cols"]=[{wch:26},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws2,"Sammanställning");
+  XLSX.writeFile(wb,`skjutjournal_${y}.xlsx`);
+});
+function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); }
+
+/* ---------- events ---------- */
+// pass settings persistence
+$("#p-datum").addEventListener("change",e=>{pass.datum=e.target.value;savePass();renderLog();});
+$("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
+$("#moreToggle").addEventListener("click",e=>{e.preventDefault();const m=$("#moreFields");m.classList.toggle("hide");if(!m.classList.contains("hide")){$("#q-ledare").value=pass.ledare;}});
+$("#q-add").addEventListener("click",quickAdd);
+$("#q-skytt").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#q-skott").focus();}});
+$("#q-skott").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();quickAdd();}});
+
+// session list delete (no PIN – fix typos in current pass)
+$("#sessionList").addEventListener("click",async e=>{
+  const x=e.target.closest("[data-del]"); if(!x)return;
+  if(!confirm("Ta bort posten?"))return;
+  if(await delRow(x.dataset.del)){ await loadAll(); renderAll(); }
+});
+
+// view switching
+$("#adminBtn").addEventListener("click",()=>{
+  $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
+  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
+  renderAdmin();
+});
+$("#logBtn").addEventListener("click",()=>{
+  $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
+  $("#logBtn").classList.add("hide"); $("#adminBtn").classList.remove("hide");
+  renderLog();
+});
+$("#a-year").addEventListener("change",renderAdmin);
+$("#search").addEventListener("input",renderAdminTable);
+
+// admin table edit/delete
+let editId=null;
+$("#adminTbody").addEventListener("click",e=>{
+  const ed=e.target.closest("[data-edit]"), de=e.target.closest("[data-del2]");
+  if(ed){ const row=entries.find(x=>x.id===ed.dataset.edit); if(row)openEdit(row); }
+  if(de){ if(confirm("Radera posten permanent?")) delRow(de.dataset.del2).then(ok=>{if(ok)loadAll().then(()=>{renderAll();});}); }
+});
+function openEdit(e){
+  editId=e.id;
+  $("#e-datum").value=e.datum||""; $("#e-skytt").value=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
+  $("#e-ledare").value=e.skjutledare||""; $("#e-anm").value=e.anmarkning||"";
+  $("#editModal").classList.add("open");
+}
+$("#e-cancel").addEventListener("click",()=>$("#editModal").classList.remove("open"));
+$("#editModal").addEventListener("click",e=>{if(e.target.id==="editModal")$("#editModal").classList.remove("open");});
+$("#e-save").addEventListener("click",async()=>{
+  const row={datum:$("#e-datum").value,skytt:$("#e-skytt").value.trim(),
+    antal_skott:+$("#e-skott").value,
+    skjutledare:$("#e-ledare").value.trim(),anmarkning:$("#e-anm").value.trim()};
+  try{ await updateRow(editId,row); $("#editModal").classList.remove("open"); await loadAll(); renderAll(); }
+  catch(err){ alert("Kunde inte spara: "+err.message); }
+});
+
+// db settings
+$("#dbSettings").addEventListener("click",()=>{$("#cfgUrl").value=LS.url;$("#cfgKey").value=LS.key;$("#dbModal").classList.add("open");});
+$("#cfgCancel").addEventListener("click",()=>$("#dbModal").classList.remove("open"));
+$("#dbModal").addEventListener("click",e=>{if(e.target.id==="dbModal")$("#dbModal").classList.remove("open");});
+$("#cfgSave").addEventListener("click",()=>{localStorage.setItem("hskf_url",$("#cfgUrl").value.trim());localStorage.setItem("hskf_key",$("#cfgKey").value.trim());location.reload();});
+
+function showBanner(type,msg,t){
+  const b=$("#banner");
+  b.innerHTML=`<div class="banner ${type}"><span class="dot ${type}"></span><div>${msg}</div><span class="x" onclick="this.parentElement.remove()">✕</span></div>`;
+  if(t)setTimeout(()=>{const el=b.querySelector(".banner");if(el)el.remove();},t);
+}
+
+/* ---------- init ---------- */
+if("serviceWorker" in navigator){
+  let reloading=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(reloading)return; reloading=true; location.reload(); });
+  window.addEventListener("load", async ()=>{
+    try{
+      const reg=await navigator.serviceWorker.register("sw.js");
+      if(reg.waiting && navigator.serviceWorker.controller) showUpdate(reg);
+      reg.addEventListener("updatefound",()=>{
+        const nw=reg.installing; if(!nw)return;
+        nw.addEventListener("statechange",()=>{
+          if(nw.state==="installed" && navigator.serviceWorker.controller) showUpdate(reg);
+        });
+      });
+      // leta efter ny version när appen åter får fokus
+      document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") reg.update().catch(()=>{}); });
+    }catch(e){}
+  });
+}
+function showUpdate(reg){
+  showBanner("ok",`<b>Uppdatering finns.</b> En ny version är redo. <a href="#" id="doUpdate" style="color:inherit;text-decoration:underline;font-weight:700">Uppdatera nu</a>`);
+  const a=document.getElementById("doUpdate");
+  if(a) a.addEventListener("click",ev=>{ ev.preventDefault(); a.textContent="Uppdaterar…"; if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); });
+}
+/* ---------- Auth (Supabase) ---------- */
+function showAuth(){
+  authed=false; entries=[];
+  $("#authView").classList.remove("hide");
+  $("#logView").classList.add("hide"); $("#adminView").classList.add("hide");
+  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
+  $("#logoutBtn").classList.add("hide"); $("#userLabel").classList.add("hide");
+}
+async function enterApp(session){
+  authed=true;
+  // hämta roll + namn ur profiles
+  isAdmin=false; let profName="";
+  try{
+    const {data}=await sb.from("profiles").select("role,full_name").eq("id",session.user.id).maybeSingle();
+    if(data){ isAdmin=(data.role==="admin"); profName=data.full_name||""; }
+  }catch(e){}
+  const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
+  $("#authView").classList.add("hide");
+  $("#logView").classList.remove("hide"); $("#adminView").classList.add("hide");
+  $("#adminBtn").classList.toggle("hide", !isAdmin);   // admin-vyn bara för admin
+  $("#logBtn").classList.add("hide");
+  $("#logoutBtn").classList.remove("hide");
+  $("#userLabel").textContent = me + (isAdmin?" · admin":""); $("#userLabel").classList.remove("hide");
+  if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
+  applyPassToForm();
+  await loadAll(); renderAll();
+  $("#q-skytt").focus();
+}
+let _uid=undefined;
+function applyAuth(session){
+  const uid=session?session.user.id:null;
+  if(uid===_uid) return;            // ingen förändring -> hoppa över dubbelladdning
+  _uid=uid;
+  if(session) enterApp(session); else showAuth();
+}
+async function doLogin(){
+  const email=$("#authEmail").value.trim(), pw=$("#authPass").value;
+  $("#authErr").textContent="";
+  if(!email||!pw){ $("#authErr").textContent="Fyll i e-post och lösenord."; return; }
+  $("#loginBtn").disabled=true; $("#loginBtn").textContent="Loggar in…";
+  const {error}=await sb.auth.signInWithPassword({email,password:pw});
+  $("#loginBtn").disabled=false; $("#loginBtn").textContent="Logga in";
+  if(error) $("#authErr").textContent="Inloggning misslyckades. Kontrollera e-post och lösenord.";
+}
+
+/* ---------- init ---------- */
+(async function(){
+  pass.datum = pass.datum && pass.datum>="2020-01-01" ? pass.datum : today();
+  applyPassToForm();
+  if(!REMOTE){
+    // Lokalt läge – ingen inloggning, sparas i denna webbläsare
+    isAdmin=true;
+    $("#logView").classList.remove("hide"); $("#adminBtn").classList.remove("hide");
+    showBanner("warn",`<b>Lokalt läge.</b> Sparas bara i denna webbläsare. Koppla Supabase (Admin → ⚙ Databas eller CONFIG) för delad journal med inloggning.`);
+    await loadAll(); renderAll(); $("#q-skytt").focus();
+    return;
+  }
+  // Delat läge – kräver inloggning
+  $("#loginBtn").addEventListener("click",doLogin);
+  $("#authPass").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); doLogin(); } });
+  $("#authEmail").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#authPass").focus(); } });
+  $("#logoutBtn").addEventListener("click",()=>sb.auth.signOut());
+  sb.auth.onAuthStateChange((_e,session)=>applyAuth(session));
+  const {data:{session}}=await sb.auth.getSession();
+  applyAuth(session);
+})();
+</script>
+</body>
+</html>
