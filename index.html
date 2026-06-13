@@ -304,8 +304,8 @@
 <div class="modal-bg" id="editModal"><div class="modal">
   <div class="m-head"><h3>Ändra post</h3></div>
   <div class="m-body">
-    <div class="field"><label>Datum (ÅÅÅÅ-MM-DD)</label><input type="text" id="e-datum" inputmode="numeric" maxlength="10" placeholder="ÅÅÅÅ-MM-DD"></div>
-    <div class="field"><label>Skytt</label><input type="text" id="e-skytt" autocomplete="off"></div>
+    <div class="field"><label>Datum</label><div id="e-datum" class="datum-fast"></div></div>
+    <div class="field"><label>Skytt</label><div id="e-skytt" class="datum-fast"></div></div>
     <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
     <label class="comp-toggle"><input type="checkbox" id="e-kopt"> Köpt skott (debiteras)</label>
     <div class="field"><label>Poäng (tävling – lämna tomt om ej tävling)</label><input type="number" id="e-poang" min="0" step="0.1" placeholder="–"></div>
@@ -379,10 +379,6 @@ const $ = s => document.querySelector(s);
 const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toISOString().slice(0,10);
-function validDate(s){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d=new Date(s+"T00:00:00"); return !isNaN(d) && d.toISOString().slice(0,10)===s;
-}
 const kr = n => (Number(n)||0).toLocaleString("sv-SE",{style:"currency",currency:"SEK"});
 const rowCost = e => e.kopt ? (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0) : 0;
 const koptaSkott = e => e.kopt ? (+e.antal_skott||0) : 0;
@@ -719,7 +715,7 @@ function openEdit(e){
   editId=e.id;
   editWasComp=!!(e.tavling||(e.poang!=null&&e.poang!==""));
   editWasKopt=!!e.kopt;
-  $("#e-datum").value=e.datum||""; $("#e-skytt").value=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
+  $("#e-datum").textContent=e.datum||""; $("#e-skytt").textContent=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
   $("#e-kopt").checked=!!e.kopt;
   $("#e-poang").value=(e.poang!=null?e.poang:"");
   fillTavlingar($("#e-tavlingnamn"),"(ingen)",e.tavling_namn||"");
@@ -730,10 +726,7 @@ function openEdit(e){
 $("#e-cancel").addEventListener("click",()=>$("#editModal").classList.remove("open"));
 $("#editModal").addEventListener("click",e=>{if(e.target.id==="editModal")$("#editModal").classList.remove("open");});
 $("#e-save").addEventListener("click",async()=>{
-  const d=$("#e-datum").value.trim();
-  if(!validDate(d)){ alert("Ange datum som ÅÅÅÅ-MM-DD."); return; }
-  const row={datum:d,skytt:$("#e-skytt").value.trim(),
-    antal_skott:+$("#e-skott").value,
+  const row={antal_skott:+$("#e-skott").value,
     skjutledare:$("#e-ledare").value.trim(),anmarkning:$("#e-anm").value.trim()};
   const pv=$("#e-poang").value, tn=$("#e-tavlingnamn").value.trim();
   if(editWasComp||pv!==""||tn){
