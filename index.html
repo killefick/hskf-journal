@@ -288,7 +288,7 @@
       <div class="empty" id="compEmpty"><div>Inga tävlingsresultat för året.</div></div>
     </div>
 
-    <div class="card" id="membersCard">
+    <div class="card hide" id="membersCard">
       <div class="card-head">
         <h2>Medlemmar <span id="memberCount" class="hint"></span></h2>
         <button class="btn ghost tiny" id="addMemberBtn">＋ Lägg till medlem</button>
@@ -797,7 +797,7 @@ $("#adminBtn").addEventListener("click",()=>{
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
   renderAdmin();
-  if(isAdmin) loadMembers();
+  if(isAdmin && REMOTE) loadMembers();
 });
 $("#logBtn").addEventListener("click",()=>{
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
