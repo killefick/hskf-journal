@@ -57,16 +57,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create") {
-      const { email, full_name, role, password } = payload;
+      const { email, full_name, role, redirectTo } = payload;
       if (!isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
       if (!VALID_ROLES.has(role)) return json({ ok: false, error: "Ogiltig roll" }, 400);
-      if (!password || String(password).length < 8) return json({ ok: false, error: "Lösenord minst 8 tecken" }, 400);
 
-      const { data: created, error } = await admin.auth.admin.createUser({
-        email, password, email_confirm: true,
+      const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo,
+        data: { full_name: full_name ?? "" },
       });
       if (error) throw error;
-      const id = created.user.id;
+      const id = invited.user.id;
       const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: full_name ?? "", role });
       if (upErr) throw upErr;
       return json({ ok: true, data: { id, email, full_name: full_name ?? "", role } });
