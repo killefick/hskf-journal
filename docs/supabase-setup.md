@@ -74,3 +74,13 @@ directly:
 update profiles set role='revisor'
   where id = (select id from auth.users where email = 'granskare@exempel.se');
 ```
+
+## 5. "Betald"-kolumn för att nollställa skottpengar (migrering)
+
+Admin kan markera en skytts köpta skott som betalda, vilket nollställer "Att betala"
+för den skytten (posterna ligger kvar i journalen). Lägg till kolumnen en gång:
+
+```sql
+alter table skjuttillfallen
+  add column if not exists betald boolean not null default false;
+```
