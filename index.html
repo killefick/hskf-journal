@@ -93,6 +93,7 @@
   .datum-fast{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#f3f8fd;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
   .comp-group{margin-bottom:18px}
   .comp-group h3{margin-left:12px}
+  .comp-win{font-weight:700}
   .admin-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .admin-tabs{margin-bottom:16px;max-width:100%;overflow-x:auto}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
@@ -259,6 +260,7 @@
       <button data-tab="panelAnalys" class="on">Analys</button>
       <button data-tab="panelPoster">Alla poster</button>
       <button data-tab="compCard">Tävling</button>
+      <button data-tab="panelTotals">Totals</button>
       <button data-tab="membersCard" id="tabBtnMembers">Medlemmar</button>
     </div>
     <div class="card tab-panel" id="panelAnalys">
@@ -297,6 +299,17 @@
       <div class="card-head"><h2>Tävlingsresultat <span id="compCount" class="hint"></span></h2></div>
       <div id="compTables"></div>
       <div class="empty" id="compEmpty"><div>Inga tävlingsresultat för året.</div></div>
+    </div>
+
+    <div class="card tab-panel hide" id="panelTotals">
+      <div class="card-head"><h2>Totalt &amp; ranking <span id="totalsCount" class="hint"></span></h2></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Skytt</th><th style="text-align:right">Segrar</th><th style="text-align:right">Tävlingar</th><th style="text-align:right">Poäng</th></tr></thead>
+          <tbody id="totalsTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="totalsEmpty"><div>Inga tävlingspoäng för året.</div></div>
     </div>
 
     <div class="card tab-panel hide" id="membersCard">
@@ -571,6 +584,7 @@ function renderAdmin(){
     : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
   renderAdminTable();
   renderComp();
+  renderTotals();
 }
 function renderAdminTable(){
   const y=$("#a-year").value||currentYearStr();
@@ -670,20 +684,56 @@ function compGroups(rows){
     return [k||"Övrigt", list];
   });
 }
+// Pure: per-shooter season standings from real competition rows (excludes
+// Övningsskjutning and unnamed). Each competition is one day; the winner(s) are the
+// top score that day. Returns [{skytt,total,tavlingar,segrar}] sorted total desc,
+// then segrar desc, then name (sv).
+function compTotals(rows){
+  const byComp=new Map();
+  for(const e of rows){
+    const name=(e.tavling_namn||"").trim();
+    if(!name||name==="Övningsskjutning") continue;
+    const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;
+    if(p==null) continue;
+    if(!byComp.has(name)) byComp.set(name,[]);
+    byComp.get(name).push({skytt:(e.skytt||"–").trim(), p});
+  }
+  const agg=new Map();
+  for(const list of byComp.values()){
+    const maxP=Math.max(...list.map(r=>r.p));
+    for(const r of list){
+      if(!agg.has(r.skytt)) agg.set(r.skytt,{total:0,tavlingar:0,segrar:0});
+      const a=agg.get(r.skytt);
+      a.total+=r.p; a.tavlingar+=1; if(r.p===maxP) a.segrar+=1;
+    }
+  }
+  return [...agg.entries()].map(([skytt,a])=>({skytt,...a}))
+    .sort((x,y)=>(y.total-x.total)||(y.segrar-x.segrar)||x.skytt.localeCompare(y.skytt,"sv"));
+}
 function renderComp(){
   const y=$("#a-year").value||currentYearStr();
   const rows=entriesForYear(y).filter(e=>e.tavling||(e.poang!=null&&e.poang!==""));
   $("#compCount").textContent=`(${rows.length})`;
   $("#compEmpty").style.display=rows.length?"none":"block";
-  $("#compTables").innerHTML=compGroups(rows).map(([name,list])=>
-    `<div class="comp-group"><h3>${esc(name)} <span class="hint">(${list.length})</span></h3>`+
+  $("#compTables").innerHTML=compGroups(rows).map(([name,list])=>{
+    const isOvning=name==="Övningsskjutning";
+    let maxP=-Infinity;
+    if(!isOvning) for(const e of list){ const p=(e.poang!=null&&e.poang!=="")?+e.poang:-Infinity; if(p>maxP)maxP=p; }
+    return `<div class="comp-group"><h3>${esc(name)} <span class="hint">(${list.length})</span></h3>`+
     `<div class="tbl-scroll"><table>`+
     `<thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Poäng</th></tr></thead>`+
-    `<tbody>${list.map(e=>`<tr><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td><td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td></tr>`).join("")}</tbody>`+
-    `</table></div></div>`
-  ).join("");
+    `<tbody>${list.map(e=>{const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;const win=!isOvning&&p!=null&&p===maxP;return `<tr${win?' class="comp-win"':''}><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td><td class="num">${p!=null?fmt(p):""}</td></tr>`;}).join("")}</tbody>`+
+    `</table></div></div>`;
+  }).join("");
 }
 
+function renderTotals(){
+  const y=$("#a-year").value||currentYearStr();
+  const t=compTotals(entriesForYear(y));
+  $("#totalsCount").textContent=t.length?`(${t.length})`:"";
+  $("#totalsEmpty").style.display=t.length?"none":"block";
+  $("#totalsTbody").innerHTML=t.map((r,i)=>`<tr><td class="num" style="text-align:left">${i+1}</td><td>${esc(r.skytt)}</td><td class="num">${r.segrar}</td><td class="num">${r.tavlingar}</td><td class="num">${fmt(r.total)}</td></tr>`).join("");
+}
 /* ---------- shared ---------- */
 function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"))renderAdmin(); }
 
