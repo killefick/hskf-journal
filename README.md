@@ -149,8 +149,12 @@ CSV och Excel innehåller föreningsuppgifter, hela loggen (med poäng och tävl
 
 ## Roller
 
-- `member`: loggar skott och läser journalen, kan rätta/radera **egna** poster.
-- `admin`: kan ändra/radera alla poster och nå Admin & analys. Sätts i `profiles`.
+- `member`: loggar skott och läser journalen, kan rätta/radera **egna** poster. Vid
+  redigering är datum och skytt låsta (visas men kan inte ändras) – så att ett pass inte
+  råkar flyttas till fel dag.
+- `admin`: kan ändra/radera alla poster och nå Admin & analys. Admin kan dessutom **ändra
+  datum** på en post vid redigering (anges som ÅÅÅÅ-MM-DD och valideras vid sparning).
+  Sätts i `profiles`.
 - Lokalt läge (ingen Supabase) saknar inloggning och räknas som admin – endast för test.
 
 ## Uppdatera installerade appar
