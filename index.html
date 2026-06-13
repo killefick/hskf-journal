@@ -195,7 +195,7 @@
       </div>
       <div class="card-body">
         <div class="pass">
-          <div class="field"><label>Datum</label><div id="p-datum" class="datum-fast"></div></div>
+          <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
           <div class="field"><label for="p-ledare">Skjutledare / ansvarig</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
         </div>
         <div style="margin-top:14px">
@@ -424,7 +424,7 @@ function applyCompUI(){
   document.querySelector(".quick").classList.toggle("comp",on);
 }
 function applyPassToForm(){
-  $("#p-datum").textContent=pass.datum||today();
+  $("#p-datum").value=pass.datum||today();
   $("#p-ledare").value=pass.ledare||"";
   $("#p-tavling").checked=!!pass.tavling;
   $("#p-tavlingnamn").value=pass.tavlingNamn||"";
@@ -678,6 +678,12 @@ function fillTavlingar(sel,emptyLabel,extra){
 /* ---------- events ---------- */
 // pass settings persistence
 $("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
+$("#p-datum").addEventListener("change",()=>{
+  pass.datum=$("#p-datum").value||today();
+  if(!$("#p-datum").value) $("#p-datum").value=pass.datum;
+  savePass();
+  renderLog();
+});
 $("#p-tavling").addEventListener("change",e=>{pass.tavling=e.target.checked;savePass();applyCompUI();});
 $("#p-tavlingnamn").addEventListener("change",e=>{pass.tavlingNamn=e.target.value;savePass();});
 $("#moreToggle").addEventListener("click",e=>{e.preventDefault();const m=$("#moreFields");m.classList.toggle("hide");if(!m.classList.contains("hide")){$("#q-ledare").value=pass.ledare;}});
