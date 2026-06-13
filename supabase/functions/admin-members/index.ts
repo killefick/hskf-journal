@@ -12,7 +12,7 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const VALID_ROLES = new Set(["admin", "member"]);
+const VALID_ROLES = new Set(["admin", "member", "revisor"]);
 const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
 
 Deno.serve(async (req) => {

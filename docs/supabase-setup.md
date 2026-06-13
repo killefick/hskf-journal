@@ -38,3 +38,39 @@ In Supabase: Authentication -> URL Configuration -> Redirect URLs, add:
     https://killefick.github.io/hskf-journal/
 
 This is the page the password-reset email link returns to.
+
+## 4. Enforce the read-only `revisor` role in the database (recommended)
+
+The app hides all editing for `revisor` users in the UI, but for a true audit
+role the database should also reject writes. The existing `update`/`delete`
+policies require `created_by = auth.uid()` or admin — which still lets a former
+member who became a revisor change their own old rows. Re-create all three write
+policies so a revisor can never insert, update, or delete:
+
+```sql
+-- helper: is the caller a revisor?
+-- (uses the profiles table; coalesce so a missing row is treated as non-revisor)
+drop policy if exists "insert" on skjuttillfallen;
+create policy "insert" on skjuttillfallen for insert to authenticated
+  with check (coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
+
+drop policy if exists "update" on skjuttillfallen;
+create policy "update" on skjuttillfallen for update to authenticated
+  using ((created_by = auth.uid() or public.is_admin())
+         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor')
+  with check ((created_by = auth.uid() or public.is_admin())
+         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
+
+drop policy if exists "delete" on skjuttillfallen;
+create policy "delete" on skjuttillfallen for delete to authenticated
+  using ((created_by = auth.uid() or public.is_admin())
+         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
+```
+
+Assign the role from the app (Admin & analys -> Medlemmar -> role dropdown), or
+directly:
+
+```sql
+update profiles set role='revisor'
+  where id = (select id from auth.users where email = 'granskare@exempel.se');
+```

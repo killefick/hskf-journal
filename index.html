@@ -111,6 +111,7 @@
   .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;letter-spacing:.02em}
   .pill.medlem{background:#dcebf8;color:#0f4c81}
   .pill.gast{background:#f6e3d5;color:#8f3f1d}
+  .pill.revisor{background:#e6e2f3;color:#4b3f7a}
 
   /* admin dashboard */
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
@@ -362,7 +363,7 @@
   <div class="m-body">
     <div class="field"><label for="m-email">E-post</label><input type="email" id="m-email" autocomplete="off" inputmode="email"></div>
     <div class="field"><label for="m-name">Namn</label><input type="text" id="m-name" autocomplete="off"></div>
-    <div class="field"><label for="m-role">Roll</label><select id="m-role"><option value="member">Medlem</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label for="m-role">Roll</label><select id="m-role"><option value="member">Medlem</option><option value="revisor">Revisor</option><option value="admin">Admin</option></select></div>
     <div class="field"><label for="m-pass">Lösenord (minst 8 tecken)</label><input type="password" id="m-pass" autocomplete="new-password"></div>
     <div id="mErr" style="color:var(--rust-d);font-size:13px;min-height:18px"></div>
   </div>
@@ -418,6 +419,7 @@ const sb = REMOTE ? supabase.createClient(URL_, KEY_) : null;
 let entries = [];
 let authed = false;
 let isAdmin = false;
+let isRevisor = false;
 
 const $ = s => document.querySelector(s);
 const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
@@ -569,14 +571,16 @@ function renderAdminTable(){
       <td>${esc(e.skjutledare)}</td>
       <td>${esc(e.tavling_namn)}</td>
       <td style="color:var(--ink-soft)">${esc(e.anmarkning)}</td>
-      <td><div class="row-actions">
+      ${isAdmin?`<td><div class="row-actions">
         <button class="btn ghost tiny" data-edit="${e.id}">Ändra</button>
         <button class="btn danger tiny" data-del2="${e.id}">Radera</button>
-      </div></td></tr>`;
+      </div></td>`:"<td></td>"}</tr>`;
   }).join("");
 }
 /* ---------- Members (admin) ---------- */
 let members=[];
+const roleLabel = r => r==="admin"?"Admin":r==="revisor"?"Revisor":"Medlem";
+const rolePill = r => r==="admin"?"gast":r==="revisor"?"revisor":"medlem";
 async function loadMembers(){
   const tb=$("#memberTbody");
   tb.innerHTML=`<tr><td colspan="4" class="hint">Laddar…</td></tr>`;
@@ -590,29 +594,33 @@ function renderMembers(){
   $("#memberEmpty").classList.toggle("hide",members.length>0);
   $("#memberTbody").innerHTML=members.map(m=>{
     const isMe=m.id===_uid;
-    const other=m.role==="admin"?"member":"admin";
-    const otherLbl=other==="admin"?"Gör till admin":"Gör till medlem";
+    const sel=isMe?"":`<select class="role-sel" data-roleid="${esc(m.id)}">
+          <option value="member"${m.role==="member"?" selected":""}>Medlem</option>
+          <option value="revisor"${m.role==="revisor"?" selected":""}>Revisor</option>
+          <option value="admin"${m.role==="admin"?" selected":""}>Admin</option>
+        </select>`;
     return `<tr>
       <td>${esc(m.full_name)}</td>
       <td>${esc(m.email)}</td>
-      <td><span class="pill ${m.role==="admin"?"gast":"medlem"}">${m.role==="admin"?"Admin":"Medlem"}</span></td>
+      <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span></td>
       <td style="white-space:nowrap;text-align:right">
-        <button class="btn ghost tiny" data-role="${esc(m.id)}" data-to="${other}">${otherLbl}</button>
+        ${sel}
         <button class="btn ghost tiny" data-reset="${esc(m.email)}">↺ Återställ</button>
         ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
       </td>
     </tr>`;
   }).join("");
 }
+$("#memberTbody").addEventListener("change",async(ev)=>{
+  const sel=ev.target.closest(".role-sel"); if(!sel) return;
+  const r=await sb.functions.invoke("admin-members",{body:{action:"setRole",id:sel.dataset.roleid,role:sel.value}});
+  if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ändra roll: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); }
+  await loadMembers();
+});
 $("#memberTbody").addEventListener("click",async(ev)=>{
-  const roleBtn=ev.target.closest("[data-role]");
   const resetBtn=ev.target.closest("[data-reset]");
   const delBtn=ev.target.closest("[data-delm]");
-  if(roleBtn){
-    const r=await sb.functions.invoke("admin-members",{body:{action:"setRole",id:roleBtn.dataset.role,role:roleBtn.dataset.to}});
-    if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ändra roll: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return; }
-    await loadMembers();
-  } else if(resetBtn){
+  if(resetBtn){
     const {error}=await sb.auth.resetPasswordForEmail(resetBtn.dataset.reset,{redirectTo:location.origin+location.pathname});
     showBanner(error?"warn":"ok",error?("Kunde inte skicka: "+esc(error.message)):"Återställningsmejl skickat.",5000);
   } else if(delBtn){
@@ -787,6 +795,7 @@ $("#q-poang").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefaul
 
 // session list delete (no PIN – fix typos in current pass)
 $("#sessionList").addEventListener("click",async e=>{
+  if(isRevisor)return;
   const x=e.target.closest("[data-del]"); if(!x)return;
   if(!confirm("Ta bort posten?"))return;
   if(await delRow(x.dataset.del)){ await loadAll(); renderAll(); }
@@ -810,6 +819,7 @@ $("#search").addEventListener("input",renderAdminTable);
 // admin table edit/delete
 let editId=null, editWasComp=false, editWasKopt=false;
 $("#adminTbody").addEventListener("click",e=>{
+  if(!isAdmin)return;
   const ed=e.target.closest("[data-edit]"), de=e.target.closest("[data-del2]");
   if(ed){ const row=entries.find(x=>x.id===ed.dataset.edit); if(row)openEdit(row); }
   if(de){ if(confirm("Radera posten permanent?")) delRow(de.dataset.del2).then(ok=>{if(ok)loadAll().then(()=>{renderAll();});}); }
@@ -920,7 +930,7 @@ function showUpdate(reg){
 }
 /* ---------- Auth (Supabase) ---------- */
 function showAuth(){
-  authed=false; entries=[];
+  authed=false; isAdmin=false; isRevisor=false; entries=[];
   $("#authView").classList.remove("hide");
   $("#logView").classList.add("hide"); $("#adminView").classList.add("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
@@ -929,7 +939,7 @@ function showAuth(){
 async function enterApp(session){
   authed=true;
   // hämta roll + namn ur profiles
-  isAdmin=false; let profName="";
+  isAdmin=false; isRevisor=false; let profName="";
   try{
     const {data,error}=await sb.from("profiles").select("role,full_name").eq("id",session.user.id).maybeSingle();
     if(error){
@@ -937,23 +947,26 @@ async function enterApp(session){
     } else if(!data){
       showBanner("warn",`<b>Ingen profil hittad.</b> Kontot saknar rad i <i>profiles</i> — admin-funktioner (t.ex. ändra datum) är avstängda.`);
     } else {
-      isAdmin=(data.role==="admin"); profName=data.full_name||"";
+      isAdmin=(data.role==="admin"); isRevisor=(data.role==="revisor"); profName=data.full_name||"";
     }
   }catch(e){
     showBanner("warn",`<b>Fel vid behörighetskontroll.</b> ${esc(e&&e.message||e)}`);
   }
   const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
   $("#authView").classList.add("hide");
-  $("#logView").classList.remove("hide"); $("#adminView").classList.add("hide");
-  $("#adminBtn").classList.toggle("hide", !isAdmin);   // admin-vyn bara för admin
+  // revisor = läsbehörig granskare: landar i admin-vyn, ingen inmatning
+  $("#logView").classList.toggle("hide", isRevisor);
+  $("#adminView").classList.toggle("hide", !isRevisor);
+  $("#adminBtn").classList.toggle("hide", !isAdmin);   // bara admin kan växla till admin-vyn
+  $("#logBtn").classList.add("hide");                  // revisor får inte gå till inmatning
   $("#membersCard").classList.toggle("hide", !isAdmin);
-  $("#logBtn").classList.add("hide");
+  $("#dbSettings").classList.toggle("hide", !isAdmin);
   $("#logoutBtn").classList.remove("hide");
-  $("#userLabel").textContent = me + (isAdmin?" · admin":""); $("#userLabel").classList.remove("hide");
+  $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
   if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
   applyPassToForm();
   await loadAll(); renderAll();
-  $("#q-skytt").focus();
+  if(!isRevisor) $("#q-skytt").focus();
 }
 let _uid=undefined;
 function applyAuth(session){
