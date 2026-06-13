@@ -687,6 +687,7 @@ function renderMembers(){
       <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span></td>
       <td style="white-space:nowrap;text-align:right">
         ${sel}
+        <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}">✎ Redigera</button>
         <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
         ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
       </td>
@@ -700,6 +701,18 @@ $("#memberTbody").addEventListener("change",async(ev)=>{
   await loadMembers();
 });
 $("#memberTbody").addEventListener("click",async(ev)=>{
+  const editBtn=ev.target.closest("[data-editm]");
+  if(editBtn){
+    editingMemberId=editBtn.dataset.editm;
+    $("#memberModal").querySelector("h3").textContent="Redigera medlem";
+    $("#m-save").textContent="Spara";
+    $("#m-role").closest(".field").classList.add("hide");
+    $("#mErr").textContent="";
+    $("#m-email").value=editBtn.dataset.email||"";
+    $("#m-name").value=editBtn.dataset.name||"";
+    $("#memberModal").classList.add("open");
+    return;
+  }
   const resetBtn=ev.target.closest("[data-reset]");
   const delBtn=ev.target.closest("[data-delm]");
   if(resetBtn){
@@ -1117,18 +1130,33 @@ $("#cfgCancel").addEventListener("click",()=>$("#dbModal").classList.remove("ope
 $("#dbModal").addEventListener("click",e=>{if(e.target.id==="dbModal")$("#dbModal").classList.remove("open");});
 $("#cfgSave").addEventListener("click",()=>{localStorage.setItem("hskf_url",$("#cfgUrl").value.trim());localStorage.setItem("hskf_key",$("#cfgKey").value.trim());location.reload();});
 
-$("#addMemberBtn").addEventListener("click",()=>{ $("#mErr").textContent=""; $("#m-email").value=""; $("#m-name").value=""; $("#m-role").value="member"; $("#memberModal").classList.add("open"); });
+let editingMemberId = null;
+$("#addMemberBtn").addEventListener("click",()=>{
+  editingMemberId=null;
+  $("#memberModal").querySelector("h3").textContent="Lägg till medlem";
+  $("#m-save").textContent="Skapa medlem";
+  $("#m-role").closest(".field").classList.remove("hide");
+  $("#mErr").textContent=""; $("#m-email").value=""; $("#m-name").value=""; $("#m-role").value="member";
+  $("#memberModal").classList.add("open");
+});
 $("#m-cancel").addEventListener("click",()=>$("#memberModal").classList.remove("open"));
 $("#memberModal").addEventListener("click",e=>{if(e.target.id==="memberModal")$("#memberModal").classList.remove("open");});
 $("#m-save").addEventListener("click",async()=>{
-  const email=$("#m-email").value.trim(), full_name=$("#m-name").value.trim(), role=$("#m-role").value;
+  const email=$("#m-email").value.trim(), full_name=$("#m-name").value.trim();
   if(!email||!full_name){ $("#mErr").textContent="Fyll i e-post och namn."; return; }
-  const btn=$("#m-save"); btn.disabled=true; btn.textContent="Bjuder in…";
-  const r=await sb.functions.invoke("admin-members",{body:{action:"create",email,full_name,role,redirectTo:location.origin+location.pathname}});
-  btn.disabled=false; btn.textContent="Skapa medlem";
-  if(r.error||!r.data?.ok){ $("#mErr").textContent=(r.data&&r.data.error)||(r.error&&r.error.message)||"Kunde inte skapa medlem."; return; }
+  const btn=$("#m-save"), btnLabel=btn.textContent;
+  btn.disabled=true; btn.textContent=editingMemberId?"Sparar…":"Bjuder in…";
+  let r;
+  if(editingMemberId){
+    r=await sb.functions.invoke("admin-members",{body:{action:"update",id:editingMemberId,email,full_name}});
+  } else {
+    const role=$("#m-role").value;
+    r=await sb.functions.invoke("admin-members",{body:{action:"create",email,full_name,role,redirectTo:location.origin+location.pathname}});
+  }
+  btn.disabled=false; btn.textContent=btnLabel;
+  if(r.error||!r.data?.ok){ $("#mErr").textContent=(r.data&&r.data.error)||(r.error&&r.error.message)||"Kunde inte spara."; return; }
   $("#memberModal").classList.remove("open");
-  showBanner("ok","Inbjudan skickad.",5000);
+  showBanner("ok",editingMemberId?"Medlem uppdaterad.":"Inbjudan skickad.",5000);
   await loadMembers();
 });
 

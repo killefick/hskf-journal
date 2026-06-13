@@ -81,6 +81,24 @@ Deno.serve(async (req) => {
       return json({ ok: true, data: { id, role } });
     }
 
+    if (action === "update") {
+      const { id, full_name, email } = payload;
+      if (!id) return json({ ok: false, error: "id saknas" }, 400);
+      if (!isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
+
+      // Only call the auth API when the email actually changed.
+      const { data: cur, error: getErr } = await admin.auth.admin.getUserById(id);
+      if (getErr) throw getErr;
+      if (cur.user?.email !== email) {
+        const { error: emErr } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true });
+        if (emErr) throw emErr;
+      }
+
+      const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: full_name ?? "" });
+      if (upErr) throw upErr;
+      return json({ ok: true, data: { id, email, full_name: full_name ?? "" } });
+    }
+
     if (action === "delete") {
       const { id } = payload;
       if (!id) return json({ ok: false, error: "id saknas" }, 400);
