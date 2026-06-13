@@ -60,9 +60,13 @@ RLS):
    (before the upsert) — the client never sends the old name.
 2. Upsert the profile to the new name.
 3. If old name is non-empty and differs from new: `update skjuttillfallen set
-   skytt = new where skytt = old` (with `.select("id")` to count affected rows)
-   and `update skytt_faktura set skytt_namn = new where skytt_namn = old`.
-4. Return `renamed` = the journal row count in the response data.
+   skytt = new where skytt = old` (with `.select("id")` to count affected rows).
+4. Rename the invoice record. Because `skytt_faktura.skytt_namn` is the primary
+   key, a blind update would collide if a row already exists under the new name.
+   Instead: read the old row; if present, read any existing new-name row and
+   **merge** (keep a non-empty `email`, keep the later `faktura_skickad`), upsert
+   the merged row under the new name, then delete the old row.
+5. Return `renamed` = the journal row count in the response data.
 
 Caveats (inherent, no FK): if the profile name never matched the journal `skytt`
 spelling, nothing is renamed; if two members share an identical name, both their

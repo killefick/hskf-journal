@@ -112,9 +112,30 @@ Deno.serve(async (req) => {
           .from("skjuttillfallen").update({ skytt: newName }).eq("skytt", oldName).select("id");
         if (jErr) throw jErr;
         renamed = rows?.length ?? 0;
-        const { error: fErr } = await admin
-          .from("skytt_faktura").update({ skytt_namn: newName }).eq("skytt_namn", oldName);
-        if (fErr) throw fErr;
+
+        // Rename the invoice record too. skytt_namn is the primary key, so a blind
+        // update would collide if a row already exists under the new name — merge
+        // instead (keep a non-empty email, keep the later faktura_skickad), then
+        // drop the old row.
+        const { data: oldFak, error: ofErr } = await admin
+          .from("skytt_faktura").select("email, faktura_skickad").eq("skytt_namn", oldName).maybeSingle();
+        if (ofErr) throw ofErr;
+        if (oldFak) {
+          const { data: newFak, error: nfErr } = await admin
+            .from("skytt_faktura").select("email, faktura_skickad").eq("skytt_namn", newName).maybeSingle();
+          if (nfErr) throw nfErr;
+          const later = (a: string | null, b: string | null) =>
+            !a ? (b ?? null) : !b ? a : (new Date(a).getTime() >= new Date(b).getTime() ? a : b);
+          const merged = {
+            skytt_namn: newName,
+            email: oldFak.email || newFak?.email || null,
+            faktura_skickad: later(oldFak.faktura_skickad ?? null, newFak?.faktura_skickad ?? null),
+          };
+          const { error: upFErr } = await admin.from("skytt_faktura").upsert(merged);
+          if (upFErr) throw upFErr;
+          const { error: delFErr } = await admin.from("skytt_faktura").delete().eq("skytt_namn", oldName);
+          if (delFErr) throw delFErr;
+        }
       }
 
       return json({ ok: true, data: { id, email, full_name: newName, renamed } });
