@@ -90,6 +90,7 @@
   .comp-toggle{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;color:var(--ink);font-weight:600}
   .comp-toggle input{width:auto;margin:0}
   .datum-fast{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#f3f8fd;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
+  .comp-group{margin-bottom:18px}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
   .seg button.on{background:var(--forest);color:#f3ecdd}
@@ -284,12 +285,7 @@
 
     <div class="card" id="compCard">
       <div class="card-head"><h2>Tävlingsresultat <span id="compCount" class="hint"></span></h2></div>
-      <div class="tbl-scroll">
-        <table>
-          <thead><tr><th>Datum</th><th>Tävling</th><th>Skytt</th><th style="text-align:right">Poäng</th></tr></thead>
-          <tbody id="compTbody"></tbody>
-        </table>
-      </div>
+      <div id="compTables"></div>
       <div class="empty" id="compEmpty"><div>Inga tävlingsresultat för året.</div></div>
     </div>
 
@@ -643,13 +639,39 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
   }
 });
 
+// Pure: groups competition rows by tavling_namn and returns ordered [name, sortedRows].
+// Order: TAVLINGAR names (except practice) in list order, then other names alpha (sv),
+// then "Övningsskjutning" last. Competition tables sort by poäng desc (blanks last,
+// tiebreak date desc); the practice table sorts by date desc.
+function compGroups(rows){
+  const PRACTICE="Övningsskjutning";
+  const groups=new Map();
+  for(const e of rows){ const k=(e.tavling_namn||"").trim(); if(!groups.has(k))groups.set(k,[]); groups.get(k).push(e); }
+  const pv=e=>(e.poang!=null&&e.poang!=="")?+e.poang:-Infinity;
+  const order=[];
+  for(const t of TAVLINGAR){ if(t!==PRACTICE && groups.has(t)) order.push(t); }
+  [...groups.keys()].filter(k=>k!==PRACTICE && !TAVLINGAR.includes(k))
+    .sort((a,b)=>a.localeCompare(b,"sv")).forEach(k=>order.push(k));
+  if(groups.has(PRACTICE)) order.push(PRACTICE);
+  return order.map(k=>{
+    const list=groups.get(k).slice();
+    if(k===PRACTICE) list.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+    else list.sort((a,b)=>(pv(b)-pv(a))||(b.datum||"").localeCompare(a.datum||""));
+    return [k||"Övrigt", list];
+  });
+}
 function renderComp(){
   const y=$("#a-year").value||currentYearStr();
-  const rows=entriesForYear(y).filter(e=>e.tavling||(e.poang!=null&&e.poang!==""))
-    .sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||((+b.poang||0)-(+a.poang||0)));
+  const rows=entriesForYear(y).filter(e=>e.tavling||(e.poang!=null&&e.poang!==""));
   $("#compCount").textContent=`(${rows.length})`;
   $("#compEmpty").style.display=rows.length?"none":"block";
-  $("#compTbody").innerHTML=rows.map(e=>`<tr><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.tavling_namn)}</td><td>${esc(e.skytt)}</td><td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td></tr>`).join("");
+  $("#compTables").innerHTML=compGroups(rows).map(([name,list])=>
+    `<div class="comp-group"><h3>${esc(name)} <span class="hint">(${list.length})</span></h3>`+
+    `<div class="tbl-scroll"><table>`+
+    `<thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Poäng</th></tr></thead>`+
+    `<tbody>${list.map(e=>`<tr><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td><td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td></tr>`).join("")}</tbody>`+
+    `</table></div></div>`
+  ).join("");
 }
 
 /* ---------- shared ---------- */
