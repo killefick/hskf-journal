@@ -92,6 +92,8 @@
   .datum-fast{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#f3f8fd;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
   .comp-group{margin-bottom:18px}
   .comp-group h3{margin-left:12px}
+  .admin-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .admin-tabs{margin-bottom:16px;max-width:100%;overflow-x:auto}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
   .seg button.on{background:var(--forest);color:#f3ecdd}
@@ -245,16 +247,22 @@
 
   <!-- ============ ADMINVY ============ -->
   <div id="adminView" class="hide">
-    <div class="card">
+    <div class="admin-toolbar">
+      <label for="a-year" style="margin:0">År</label>
+      <select id="a-year" style="width:auto"></select>
+      <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
+      <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
+      <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
+    </div>
+    <div class="seg admin-tabs">
+      <button data-tab="panelAnalys" class="on">Analys</button>
+      <button data-tab="panelPoster">Alla poster</button>
+      <button data-tab="compCard">Tävling</button>
+      <button data-tab="membersCard" id="tabBtnMembers">Medlemmar</button>
+    </div>
+    <div class="card tab-panel" id="panelAnalys">
       <div class="card-head">
         <h2>Analys &amp; sammanställning</h2>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label for="a-year" style="margin:0">År</label>
-          <select id="a-year" style="width:auto"></select>
-          <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
-          <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
-          <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
-        </div>
       </div>
       <div class="card-body">
         <div class="stats">
@@ -271,7 +279,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card tab-panel hide" id="panelPoster">
       <div class="card-head"><h2>Alla poster <span id="rowCount" class="hint"></span></h2>
         <input type="search" id="search" placeholder="Sök skytt, skjutledare…" style="width:auto;min-width:180px;padding:6px 10px">
       </div>
@@ -284,13 +292,13 @@
       <div class="empty hide" id="adminEmpty"><div class="big">Inga poster för året</div></div>
     </div>
 
-    <div class="card" id="compCard">
+    <div class="card tab-panel hide" id="compCard">
       <div class="card-head"><h2>Tävlingsresultat <span id="compCount" class="hint"></span></h2></div>
       <div id="compTables"></div>
       <div class="empty" id="compEmpty"><div>Inga tävlingsresultat för året.</div></div>
     </div>
 
-    <div class="card hide" id="membersCard">
+    <div class="card tab-panel hide" id="membersCard">
       <div class="card-head">
         <h2>Medlemmar <span id="memberCount" class="hint"></span></h2>
         <button class="btn ghost tiny" id="addMemberBtn">＋ Lägg till medlem</button>
@@ -851,6 +859,11 @@ $("#logBtn").addEventListener("click",()=>{
   renderLog();
 });
 $("#a-year").addEventListener("change",renderAdmin);
+function setAdminTab(id){
+  document.querySelectorAll("#adminView .tab-panel").forEach(p=>p.classList.toggle("hide", p.id!==id));
+  document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===id));
+}
+document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>setAdminTab(b.dataset.tab)));
 $("#search").addEventListener("input",renderAdminTable);
 // markera/ångra betald per skytt (admin)
 async function setShooterPaid(name,year,paid){
@@ -1010,7 +1023,7 @@ async function enterApp(session){
   $("#adminView").classList.toggle("hide", !isRevisor);
   $("#adminBtn").classList.toggle("hide", !isAdmin);   // bara admin kan växla till admin-vyn
   $("#logBtn").classList.add("hide");                  // revisor får inte gå till inmatning
-  $("#membersCard").classList.toggle("hide", !isAdmin);
+  $("#tabBtnMembers").classList.toggle("hide", !isAdmin);
   $("#dbSettings").classList.toggle("hide", !isAdmin);
   $("#logoutBtn").classList.remove("hide");
   $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
