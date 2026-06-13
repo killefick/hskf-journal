@@ -88,12 +88,6 @@
   .quick input#q-skott,.quick input#q-poang{font-size:18px;padding:13px 14px;text-align:center;font-variant-numeric:tabular-nums}
   .comp-toggle{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;color:var(--ink);font-weight:600}
   .comp-toggle input{width:auto;margin:0}
-  .typer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
-  .typ-lab{font-size:12px;font-weight:600;color:var(--ink-soft);letter-spacing:.02em;margin-right:2px}
-  .typ-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:9px 13px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--ink-soft);background:#fff;user-select:none}
-  .typ-chip input{width:auto;margin:0}
-  .typ-chip.on{border-color:var(--forest);color:var(--forest-d);background:#eaf2fb}
-  .pill.typ{background:#e7eef6;color:#0f4c81}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
   .seg button.on{background:var(--forest);color:#f3ecdd}
@@ -206,8 +200,8 @@
         <div style="margin-top:14px">
           <label class="comp-toggle"><input type="checkbox" id="p-tavling"> Tävling (registrera poäng per skytt)</label>
           <div class="field hide" id="compNameWrap" style="margin-top:11px;max-width:340px">
-            <label for="p-tavlingnamn">Tävlingens namn</label>
-            <input type="text" id="p-tavlingnamn" placeholder="t.ex. Vårserien 1">
+            <label for="p-tavlingnamn">Tävling</label>
+            <select id="p-tavlingnamn"></select>
           </div>
         </div>
       </div>
@@ -222,7 +216,6 @@
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
-        <div class="typer" id="typeRow"></div>
         <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
           <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
@@ -274,7 +267,7 @@
       </div>
       <div class="tbl-scroll">
         <table>
-          <thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Skott</th><th>Typ</th><th style="text-align:right">Poäng</th><th>Skjutledare</th><th>Tävling</th><th>Anm.</th><th></th></tr></thead>
+          <thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Skott</th><th style="text-align:right">Poäng</th><th>Skjutledare</th><th>Tävling</th><th>Anm.</th><th></th></tr></thead>
           <tbody id="adminTbody"></tbody>
         </table>
       </div>
@@ -312,9 +305,8 @@
     <div class="field"><label>Datum</label><input type="date" id="e-datum"></div>
     <div class="field"><label>Skytt</label><input type="text" id="e-skytt" autocomplete="off"></div>
     <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
-    <div class="field"><label>Typ av skytte</label><select id="e-typ"></select></div>
     <div class="field"><label>Poäng (tävling – lämna tomt om ej tävling)</label><input type="number" id="e-poang" min="0" step="0.1" placeholder="–"></div>
-    <div class="field"><label>Tävlingens namn</label><input type="text" id="e-tavlingnamn"></div>
+    <div class="field"><label>Tävling</label><select id="e-tavlingnamn"></select></div>
     <div class="field"><label>Skjutledare</label><input type="text" id="e-ledare" list="leaderList"></div>
     <div class="field"><label>Anmärkning</label><input type="text" id="e-anm"></div>
   </div>
@@ -356,11 +348,17 @@ const ORG = {
   skjutbaneansvarig:"Bertil Hagström",
 };
 
-/* Skotttyper + pris per skott i kronor. Byt namn och sätt pris här – ett ställe.
-   Kostnaden per skytt räknas som antal skott × pris för vald typ. */
-const SKOTT_TYPER = [
-  { id:"guld", label:"Guldfält", pris:0 },
-  { id:"dl",   label:"DL fält",  pris:0 },
+/* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
+const PRIS_PER_SKOTT = 9;
+
+/* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
+const TAVLINGAR = [
+  "FSR Propagandatävlan",
+  "Vårpokalen",
+  "D. von Schedvins vandringspris",
+  "Korporationsskjutning",
+  "Höstpokalen",
+  "Övningsskjutning",
 ];
 
 const LS = { url:localStorage.getItem("hskf_url")||"", key:localStorage.getItem("hskf_key")||"" };
@@ -379,13 +377,8 @@ const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toISOString().slice(0,10);
 const kr = n => (Number(n)||0).toLocaleString("sv-SE",{style:"currency",currency:"SEK"});
-
-const TYP = Object.fromEntries(SKOTT_TYPER.map(t=>[t.id,t]));
-const typLabel = id => (TYP[id]&&TYP[id].label)||"";
-const typPris  = id => (TYP[id]&&+TYP[id].pris)||0;
-const rowCost  = e => (+e.antal_skott||0) * typPris(e.typ);
-const hasPrices = SKOTT_TYPER.some(t=>+t.pris>0);
-let selTyp = null;   // vald skotttyp i inmatningen – inget valt som standard
+const rowCost = e => (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0);
+const hasPrices = +PRIS_PER_SKOTT > 0;
 
 /* ---------- data layer ---------- */
 const local = {
@@ -450,7 +443,6 @@ function renderLog(){
     const li=document.createElement("li");
     li.innerHTML=`<span class="nm">${esc(e.skytt)}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
-      ${e.typ?`<span class="pill typ">${esc(typLabel(e.typ))}</span>`:""}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
       <span class="x" data-del="${e.id}">✕</span>
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
@@ -502,8 +494,8 @@ function renderAdmin(){
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${kr(v.kostnad)}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#priceHint").textContent = hasPrices
-    ? "Pris per skott: "+SKOTT_TYPER.map(t=>`${t.label} ${kr(t.pris)}`).join(" · ")+". Poster utan vald typ räknas som 0 kr."
-    : "Inget pris satt. Ange pris per skott i CONFIG (SKOTT_TYPER) i index.html för att räkna kostnad.";
+    ? "Pris per skott: "+kr(PRIS_PER_SKOTT)+". Kostnad per skytt = antal skott × priset."
+    : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
   renderAdminTable();
   renderComp();
 }
@@ -511,7 +503,7 @@ function renderAdminTable(){
   const y=$("#a-year").value||currentYearStr();
   const q=$("#search").value.trim().toLowerCase();
   let rows=entriesForYear(y);
-  if(q)rows=rows.filter(e=>`${e.skytt} ${e.skjutledare} ${e.anmarkning} ${e.tavling_namn||""} ${typLabel(e.typ)}`.toLowerCase().includes(q));
+  if(q)rows=rows.filter(e=>`${e.skytt} ${e.skjutledare} ${e.anmarkning} ${e.tavling_namn||""}`.toLowerCase().includes(q));
   rows.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
   $("#rowCount").textContent=`(${rows.length})`;
   $("#adminEmpty").classList.toggle("hide",rows.length>0);
@@ -519,7 +511,6 @@ function renderAdminTable(){
     return `<tr>
       <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td>
       <td class="num">${fmt(e.antal_skott)}</td>
-      <td>${e.typ?esc(typLabel(e.typ)):""}</td>
       <td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td>
       <td>${esc(e.skjutledare)}</td>
       <td>${esc(e.tavling_namn)}</td>
@@ -564,7 +555,6 @@ async function quickAdd(){
     row.tavling_namn=(pass.tavlingNamn||"").trim();
     row.poang=poangVal!==""?+poangVal:null;
   }
-  if(selTyp) row.typ=selTyp;
   $("#q-add").disabled=true;
   try{
     const saved=await addRow(row);
@@ -575,7 +565,7 @@ async function quickAdd(){
     $("#q-skytt").focus();
   }catch(err){
     const m=String(err&&err.message||err);
-    if(/tavling|poang|typ|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng/typ). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
+    if(/tavling|poang|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
     else alert("Kunde inte spara: "+m);
   }
   finally{ $("#q-add").disabled=false; }
@@ -613,10 +603,10 @@ function summaryRows(ye,y){
     [],["Hänvisningar","Förordning (1998:901) om egenkontroll · NFS 2005:15 (buller) · FAP 525-1 / SäkB"]);
   return r;
 }
-function logHeader(){ return ["Datum","Skytt","Antal skott","Typ","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
+function logHeader(){ return ["Datum","Skytt","Antal skott","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
-    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,typLabel(e.typ),(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
+    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
 }
 function payRows(ye){
   const map={};
@@ -635,7 +625,7 @@ $("#exportCsv").addEventListener("click",()=>{
   const compBlock=comp.length?[[],["TÄVLINGSRESULTAT "+y],["Datum","Tävling","Skytt","Poäng"],...comp]:[];
   const pay=hasPrices?payRows(ye):[];
   const payTot=Math.round(ye.reduce((s,e)=>s+rowCost(e),0)*100)/100;
-  const payBlock=pay.length?[[],["ATT BETALA "+y+" – pris per skott: "+SKOTT_TYPER.map(t=>t.label+" "+t.pris+" kr").join(", ")],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]:[];
+  const payBlock=pay.length?[[],["ATT BETALA "+y+" – pris per skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]:[];
   const aoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
     [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)],
     ...summaryRows(ye,y),...compBlock,...payBlock];
@@ -648,7 +638,7 @@ $("#exportXlsx").addEventListener("click",()=>{
   const jaoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
     [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)]];
   const ws1=XLSX.utils.aoa_to_sheet(jaoa);
-  ws1["!cols"]=[{wch:12},{wch:24},{wch:11},{wch:10},{wch:9},{wch:22},{wch:18},{wch:24},{wch:12}];
+  ws1["!cols"]=[{wch:12},{wch:24},{wch:11},{wch:9},{wch:22},{wch:18},{wch:24},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws1,"Skjutjournal");
   const ws2=XLSX.utils.aoa_to_sheet(summaryRows(ye,y).slice(1));
   ws2["!cols"]=[{wch:26},{wch:18}];
@@ -662,36 +652,17 @@ $("#exportXlsx").addEventListener("click",()=>{
   const pay=hasPrices?payRows(ye):[];
   if(pay.length){
     const payTot=Math.round(ye.reduce((s,e)=>s+rowCost(e),0)*100)/100;
-    const ws4=XLSX.utils.aoa_to_sheet([["Att betala "+y],["Pris per skott",SKOTT_TYPER.map(t=>t.label+": "+t.pris+" kr").join("   ")],[],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]);
+    const ws4=XLSX.utils.aoa_to_sheet([["Att betala "+y],["Pris per skott",PRIS_PER_SKOTT+" kr"],[],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]);
     ws4["!cols"]=[{wch:24},{wch:10},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws4,"Att betala");
   }
   XLSX.writeFile(wb,`skjutjournal_${y}.xlsx`);
 });
 function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); }
-
-/* ---------- shot type selector (radio-like checkboxes, none default) ---------- */
-function syncTypeChips(){
-  document.querySelectorAll("#typeRow .typ-chip").forEach(ch=>{
-    const on=(ch.dataset.typ===selTyp);
-    ch.classList.toggle("on",on);
-    const inp=ch.querySelector("input"); if(inp) inp.checked=on;
-  });
-}
-function buildTypeChips(){
-  const row=$("#typeRow");
-  if(row){
-    row.innerHTML='<span class="typ-lab">Typ</span>'+SKOTT_TYPER.map(t=>
-      `<label class="typ-chip" data-typ="${t.id}"><input type="checkbox"> ${esc(t.label)}</label>`).join("");
-    row.querySelectorAll(".typ-chip").forEach(ch=>{
-      ch.querySelector("input").addEventListener("change",e=>{
-        selTyp = e.target.checked ? ch.dataset.typ : null;
-        syncTypeChips();
-      });
-    });
-  }
-  $("#e-typ").innerHTML='<option value="">(ingen)</option>'+SKOTT_TYPER.map(t=>`<option value="${t.id}">${esc(t.label)}</option>`).join("");
-  syncTypeChips();
+function fillTavlingar(sel,emptyLabel,extra){
+  let html=`<option value="">${emptyLabel}</option>`+TAVLINGAR.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  if(extra && !TAVLINGAR.includes(extra)) html+=`<option value="${esc(extra)}">${esc(extra)} (eget)</option>`;
+  sel.innerHTML=html;
 }
 
 /* ---------- events ---------- */
@@ -699,7 +670,7 @@ function buildTypeChips(){
 $("#p-datum").addEventListener("change",e=>{pass.datum=e.target.value;savePass();renderLog();});
 $("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
 $("#p-tavling").addEventListener("change",e=>{pass.tavling=e.target.checked;savePass();applyCompUI();});
-$("#p-tavlingnamn").addEventListener("input",e=>{pass.tavlingNamn=e.target.value;savePass();});
+$("#p-tavlingnamn").addEventListener("change",e=>{pass.tavlingNamn=e.target.value;savePass();});
 $("#moreToggle").addEventListener("click",e=>{e.preventDefault();const m=$("#moreFields");m.classList.toggle("hide");if(!m.classList.contains("hide")){$("#q-ledare").value=pass.ledare;}});
 $("#q-add").addEventListener("click",quickAdd);
 $("#q-skytt").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#q-skott").focus();}});
@@ -728,7 +699,7 @@ $("#a-year").addEventListener("change",renderAdmin);
 $("#search").addEventListener("input",renderAdminTable);
 
 // admin table edit/delete
-let editId=null, editWasComp=false, editWasTyp=false;
+let editId=null, editWasComp=false;
 $("#adminTbody").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"), de=e.target.closest("[data-del2]");
   if(ed){ const row=entries.find(x=>x.id===ed.dataset.edit); if(row)openEdit(row); }
@@ -737,10 +708,10 @@ $("#adminTbody").addEventListener("click",e=>{
 function openEdit(e){
   editId=e.id;
   editWasComp=!!(e.tavling||(e.poang!=null&&e.poang!==""));
-  editWasTyp=!!e.typ;
   $("#e-datum").value=e.datum||""; $("#e-skytt").value=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
-  $("#e-poang").value=(e.poang!=null?e.poang:""); $("#e-tavlingnamn").value=e.tavling_namn||"";
-  $("#e-typ").value=e.typ||"";
+  $("#e-poang").value=(e.poang!=null?e.poang:"");
+  fillTavlingar($("#e-tavlingnamn"),"(ingen)",e.tavling_namn||"");
+  $("#e-tavlingnamn").value=e.tavling_namn||"";
   $("#e-ledare").value=e.skjutledare||""; $("#e-anm").value=e.anmarkning||"";
   $("#editModal").classList.add("open");
 }
@@ -756,8 +727,6 @@ $("#e-save").addEventListener("click",async()=>{
     row.tavling=!!(pv!==""||tn);
     row.tavling_namn=tn;
   }
-  const tv=$("#e-typ").value;
-  if(editWasTyp||tv) row.typ=tv||null;
   try{ await updateRow(editId,row); $("#editModal").classList.remove("open"); await loadAll(); renderAll(); }
   catch(err){ alert("Kunde inte spara: "+err.message); }
 });
@@ -846,8 +815,8 @@ async function doLogin(){
 /* ---------- init ---------- */
 (async function(){
   pass.datum = pass.datum && pass.datum>="2020-01-01" ? pass.datum : today();
+  fillTavlingar($("#p-tavlingnamn"),"Välj tävling…");
   applyPassToForm();
-  buildTypeChips();
   if(!REMOTE){
     // Lokalt läge – ingen inloggning, sparas i denna webbläsare
     isAdmin=true;

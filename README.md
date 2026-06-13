@@ -16,7 +16,7 @@ icons/          appikoner
 ## Lägen
 
 - **Inmatning** (alla inloggade): namn + antal skott + Enter. Datum och skjutledare ställs
-  in en gång per pass. Markera passet som **tävling** för att även registrera poäng per skytt.
+  in en gång per pass. Markera passet som **tävling** för att även registrera poäng per skytt; tävlingen väljs ur en fast lista (`TAVLINGAR` i `index.html`).
 - **Admin & analys** (bara `admin`): statistik, diagram, tävlingsresultat, redigera/radera
   poster och export till CSV/Excel.
 
@@ -54,7 +54,6 @@ create table skjuttillfallen (
   tavling boolean not null default false,
   tavling_namn text,
   poang numeric,
-  typ text,
   created_by uuid default auth.uid(),
   created_at timestamptz default now()
 );
@@ -127,30 +126,24 @@ Kör en gång i SQL Editor:
 alter table skjuttillfallen
   add column if not exists tavling boolean not null default false,
   add column if not exists tavling_namn text,
-  add column if not exists poang numeric,
-  add column if not exists typ text;
+  add column if not exists poang numeric;
 ```
 
-## Skotttyper & pris
+## Pris per skott
 
-Varje post kan märkas med en skotttyp (radio-knappar i inmatningen, inget valt som standard).
-Namn och pris per skott sätts på ett ställe – `SKOTT_TYPER` högst upp i `index.html`:
+Sätts på ett ställe – `PRIS_PER_SKOTT` högst upp i `index.html` (kr per skott, decimal med
+punkt). Kostnad per skytt = antal skott × priset. Admin & analys visar "Att betala" per skytt
+och totalt, och det följer med i exporterna.
 
 ```js
-const SKOTT_TYPER = [
-  { id:"guld", label:"Guldfält", pris:0 },
-  { id:"dl",   label:"DL fält",  pris:0 },
-];
+const PRIS_PER_SKOTT = 9;
 ```
-
-Kostnad per skytt = antal skott × pris för vald typ. Poster utan typ räknas som 0 kr.
-Admin & analys visar "Att betala" per skytt och totalt, och det följer med i exporterna.
 
 ## Export
 
 CSV och Excel innehåller föreningsuppgifter, hela loggen (med poäng och tävlingsnamn),
 årssammanställning, signaturblock och hänvisningar. Excel får flikarna *Skjutjournal*,
-*Sammanställning*, *Tävlingsresultat* (om året har tävlingar) och *Att betala* (om pris är satt).
+*Sammanställning*, *Tävlingsresultat* (om året har tävlingar) och *Att betala* (om pris > 0).
 
 ## Roller
 
