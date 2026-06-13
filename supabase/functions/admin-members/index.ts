@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "list") {
-      const { data: list, error } = await admin.auth.admin.listUsers();
+      const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
       if (error) throw error;
       const { data: profs, error: pErr } = await admin.from("profiles").select("id, full_name, role");
       if (pErr) throw pErr;
