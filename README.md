@@ -170,6 +170,20 @@ journalen (flaggas `betald`) och kan ångras.
 const PRIS_PER_SKOTT = 9;
 ```
 
+## Fakturering (ammunition)
+
+Under **Admin & analys → Att betala** kan admin mejla en klartext-faktura till
+varje skytt med kvarstående belopp. Per rad finns **Skicka faktura**; saknas
+e-post frågar appen efter den och sparar den (ändras med **✎ e-post**).
+**Skicka alla fakturor** mejlar alla med kvarstående belopp på en gång – skyttar
+utan e-post hoppas över och rapporteras, och redan fakturerade kräver en
+bekräftelse innan de mejlas igen. Skickade fakturor visar **Skickad ÅÅÅÅ-MM-DD**.
+
+Fakturan listar köpta (ej betalda) skott per datum, totalsumma, Bankgiro
+**370-4624** och meddelandet `<namn> Ammunition`. Utskick sker via edge-funktionen
+`send-invoice` och Brevo – se `docs/supabase-setup.md` steg 7 för tabell,
+hemligheter och deploy.
+
 ## Export
 
 CSV och Excel innehåller föreningsuppgifter, hela loggen (med köpt/betald, poäng och
