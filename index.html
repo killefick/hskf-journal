@@ -88,6 +88,7 @@
   .quick input#q-skott,.quick input#q-poang{font-size:18px;padding:13px 14px;text-align:center;font-variant-numeric:tabular-nums}
   .comp-toggle{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;color:var(--ink);font-weight:600}
   .comp-toggle input{width:auto;margin:0}
+  .datum-fast{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#f3f8fd;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
   .seg button.on{background:var(--forest);color:#f3ecdd}
@@ -194,7 +195,7 @@
       </div>
       <div class="card-body">
         <div class="pass">
-          <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
+          <div class="field"><label>Datum</label><div id="p-datum" class="datum-fast"></div></div>
           <div class="field"><label for="p-ledare">Skjutledare / ansvarig</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
         </div>
         <div style="margin-top:14px">
@@ -288,7 +289,6 @@
 
   <footer>
     Underlag för egenkontroll (förordning 1998:901), bullerbedömning (NFS 2005:15) och ev. villkor.
-    Summa per kalenderår. Exportera och arkivera inför varje årsskifte / tillsyn.
   </footer>
 </div>
 
@@ -302,7 +302,7 @@
 <div class="modal-bg" id="editModal"><div class="modal">
   <div class="m-head"><h3>Ändra post</h3></div>
   <div class="m-body">
-    <div class="field"><label>Datum</label><input type="date" id="e-datum"></div>
+    <div class="field"><label>Datum (ÅÅÅÅ-MM-DD)</label><input type="text" id="e-datum" inputmode="numeric" maxlength="10" placeholder="ÅÅÅÅ-MM-DD"></div>
     <div class="field"><label>Skytt</label><input type="text" id="e-skytt" autocomplete="off"></div>
     <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
     <div class="field"><label>Poäng (tävling – lämna tomt om ej tävling)</label><input type="number" id="e-poang" min="0" step="0.1" placeholder="–"></div>
@@ -376,6 +376,10 @@ const $ = s => document.querySelector(s);
 const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toISOString().slice(0,10);
+function validDate(s){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d=new Date(s+"T00:00:00"); return !isNaN(d) && d.toISOString().slice(0,10)===s;
+}
 const kr = n => (Number(n)||0).toLocaleString("sv-SE",{style:"currency",currency:"SEK"});
 const rowCost = e => (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0);
 const hasPrices = +PRIS_PER_SKOTT > 0;
@@ -417,7 +421,7 @@ function applyCompUI(){
   document.querySelector(".quick").classList.toggle("comp",on);
 }
 function applyPassToForm(){
-  $("#p-datum").value=pass.datum||today();
+  $("#p-datum").textContent=pass.datum||today();
   $("#p-ledare").value=pass.ledare||"";
   $("#p-tavling").checked=!!pass.tavling;
   $("#p-tavlingnamn").value=pass.tavlingNamn||"";
@@ -667,7 +671,6 @@ function fillTavlingar(sel,emptyLabel,extra){
 
 /* ---------- events ---------- */
 // pass settings persistence
-$("#p-datum").addEventListener("change",e=>{pass.datum=e.target.value;savePass();renderLog();});
 $("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
 $("#p-tavling").addEventListener("change",e=>{pass.tavling=e.target.checked;savePass();applyCompUI();});
 $("#p-tavlingnamn").addEventListener("change",e=>{pass.tavlingNamn=e.target.value;savePass();});
@@ -718,7 +721,9 @@ function openEdit(e){
 $("#e-cancel").addEventListener("click",()=>$("#editModal").classList.remove("open"));
 $("#editModal").addEventListener("click",e=>{if(e.target.id==="editModal")$("#editModal").classList.remove("open");});
 $("#e-save").addEventListener("click",async()=>{
-  const row={datum:$("#e-datum").value,skytt:$("#e-skytt").value.trim(),
+  const d=$("#e-datum").value.trim();
+  if(!validDate(d)){ alert("Ange datum som ÅÅÅÅ-MM-DD."); return; }
+  const row={datum:d,skytt:$("#e-skytt").value.trim(),
     antal_skott:+$("#e-skott").value,
     skjutledare:$("#e-ledare").value.trim(),anmarkning:$("#e-anm").value.trim()};
   const pv=$("#e-poang").value, tn=$("#e-tavlingnamn").value.trim();
@@ -814,7 +819,8 @@ async function doLogin(){
 
 /* ---------- init ---------- */
 (async function(){
-  pass.datum = pass.datum && pass.datum>="2020-01-01" ? pass.datum : today();
+  pass.datum = today();   // datum utgår alltid från idag vid start (kan ändras i passet)
+  savePass();
   fillTavlingar($("#p-tavlingnamn"),"Välj tävling…");
   applyPassToForm();
   if(!REMOTE){
