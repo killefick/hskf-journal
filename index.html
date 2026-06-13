@@ -800,9 +800,17 @@ async function enterApp(session){
   // hämta roll + namn ur profiles
   isAdmin=false; let profName="";
   try{
-    const {data}=await sb.from("profiles").select("role,full_name").eq("id",session.user.id).maybeSingle();
-    if(data){ isAdmin=(data.role==="admin"); profName=data.full_name||""; }
-  }catch(e){}
+    const {data,error}=await sb.from("profiles").select("role,full_name").eq("id",session.user.id).maybeSingle();
+    if(error){
+      showBanner("warn",`<b>Kunde inte läsa behörighet (profiles).</b> ${esc(error.message)} — admin-funktioner (t.ex. ändra datum) är avstängda. Kontrollera RLS-policy på <i>profiles</i>.`);
+    } else if(!data){
+      showBanner("warn",`<b>Ingen profil hittad.</b> Kontot saknar rad i <i>profiles</i> — admin-funktioner (t.ex. ändra datum) är avstängda.`);
+    } else {
+      isAdmin=(data.role==="admin"); profName=data.full_name||"";
+    }
+  }catch(e){
+    showBanner("warn",`<b>Fel vid behörighetskontroll.</b> ${esc(e&&e.message||e)}`);
+  }
   const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
   $("#authView").classList.add("hide");
   $("#logView").classList.remove("hide"); $("#adminView").classList.add("hide");
