@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
       const { id, full_name, email } = payload;
       if (!id) return json({ ok: false, error: "id saknas" }, 400);
       if (!isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
+      const newName = (full_name ?? "").trim();
 
       // Only call the auth API when the email actually changed.
       const { data: cur, error: getErr } = await admin.auth.admin.getUserById(id);
@@ -94,9 +95,29 @@ Deno.serve(async (req) => {
         if (emErr) throw emErr;
       }
 
-      const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: full_name ?? "" });
+      // Fetch the current (old) name by id so we can propagate a rename.
+      const { data: oldProf, error: oldErr } = await admin
+        .from("profiles").select("full_name").eq("id", id).maybeSingle();
+      if (oldErr) throw oldErr;
+      const oldName = (oldProf?.full_name ?? "").trim();
+
+      const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: newName });
       if (upErr) throw upErr;
-      return json({ ok: true, data: { id, email, full_name: full_name ?? "" } });
+
+      // Propagate the rename (matched by exact old name) to journal entries and
+      // invoice records, so the member's history and faktura follow the new name.
+      let renamed = 0;
+      if (oldName && oldName !== newName) {
+        const { data: rows, error: jErr } = await admin
+          .from("skjuttillfallen").update({ skytt: newName }).eq("skytt", oldName).select("id");
+        if (jErr) throw jErr;
+        renamed = rows?.length ?? 0;
+        const { error: fErr } = await admin
+          .from("skytt_faktura").update({ skytt_namn: newName }).eq("skytt_namn", oldName);
+        if (fErr) throw fErr;
+      }
+
+      return json({ ok: true, data: { id, email, full_name: newName, renamed } });
     }
 
     if (action === "delete") {

@@ -47,6 +47,28 @@ if (action === "update") {
 The admin-gate and CORS at the top of the function already cover this action; no
 other edge-function changes are needed.
 
+#### Name propagation (rename everywhere)
+
+A member's name is duplicated by **exact string match** (there is no member FK on
+journal data) in two tables: `skjuttillfallen.skytt` (every journal entry — the
+grouping key for the per-shooter / Tävling / Totals views) and
+`skytt_faktura.skytt_namn` (saved invoice email + sent-status). When the name
+changes, the `update` action propagates it server-side (service role bypasses
+RLS):
+
+1. Fetch the **old** name by id: `select full_name from profiles where id = :id`
+   (before the upsert) — the client never sends the old name.
+2. Upsert the profile to the new name.
+3. If old name is non-empty and differs from new: `update skjuttillfallen set
+   skytt = new where skytt = old` (with `.select("id")` to count affected rows)
+   and `update skytt_faktura set skytt_namn = new where skytt_namn = old`.
+4. Return `renamed` = the journal row count in the response data.
+
+Caveats (inherent, no FK): if the profile name never matched the journal `skytt`
+spelling, nothing is renamed; if two members share an identical name, both their
+journal rows move together. Out of scope: fuzzy/case-insensitive matching,
+linking entries to member IDs.
+
 ### 2. Members table row — `renderMembers` (`index.html`, ~line 684)
 
 Add an **✎ Redigera** button per row (before the role dropdown / login-link /
@@ -114,7 +136,10 @@ $("#m-save").addEventListener("click",async()=>{
   btn.disabled=false; btn.textContent=btnLabel;
   if(r.error||!r.data?.ok){ $("#mErr").textContent=(r.data&&r.data.error)||(r.error&&r.error.message)||"Kunde inte spara."; return; }
   $("#memberModal").classList.remove("open");
-  showBanner("ok",editingMemberId?"Medlem uppdaterad.":"Inbjudan skickad.",5000);
+  let msg=editingMemberId?"Medlem uppdaterad.":"Inbjudan skickad.";
+  const renamed=editingMemberId?(r.data?.renamed||0):0;
+  if(renamed>0) msg+=` ${renamed} journalpost${renamed===1?"":"er"} omdöpt${renamed===1?"":"a"}.`;
+  showBanner("ok",msg,5000);
   await loadMembers();
 });
 ```
