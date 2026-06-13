@@ -3,9 +3,9 @@
    CDN/Supabase går alltid mot nätet.
    OBS: höj VERSION nedan när du pushar en ny version så att installerade
    användare får notisen "Uppdatering finns". */
-const VERSION = "v2";
+const VERSION = "v6";
 const CACHE = "hskf-" + VERSION;
-const ASSETS = ["./","./index.html","./manifest.json","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"];
+const ASSETS = ["./","./index.html","./manifest.json","./favicon.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
