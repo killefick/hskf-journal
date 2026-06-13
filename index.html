@@ -217,6 +217,7 @@
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
+        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras per skott)</label>
         <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
           <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
@@ -256,7 +257,7 @@
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
         <div style="margin-top:20px"><div class="label" style="margin-bottom:8px">Skott &amp; kostnad per skytt</div>
-          <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Att betala</th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
+          <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Att betala</th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
           <p class="hint" id="priceHint" style="margin:8px 2px 0"></p>
         </div>
       </div>
@@ -268,7 +269,7 @@
       </div>
       <div class="tbl-scroll">
         <table>
-          <thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Skott</th><th style="text-align:right">Poäng</th><th>Skjutledare</th><th>Tävling</th><th>Anm.</th><th></th></tr></thead>
+          <thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Skott</th><th>Köpt</th><th style="text-align:right">Poäng</th><th>Skjutledare</th><th>Tävling</th><th>Anm.</th><th></th></tr></thead>
           <tbody id="adminTbody"></tbody>
         </table>
       </div>
@@ -289,6 +290,7 @@
 
   <footer>
     Underlag för egenkontroll (förordning 1998:901), bullerbedömning (NFS 2005:15) och ev. villkor.
+    Summa per kalenderår. Exportera och arkivera inför varje årsskifte / tillsyn.
   </footer>
 </div>
 
@@ -305,6 +307,7 @@
     <div class="field"><label>Datum (ÅÅÅÅ-MM-DD)</label><input type="text" id="e-datum" inputmode="numeric" maxlength="10" placeholder="ÅÅÅÅ-MM-DD"></div>
     <div class="field"><label>Skytt</label><input type="text" id="e-skytt" autocomplete="off"></div>
     <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
+    <label class="comp-toggle"><input type="checkbox" id="e-kopt"> Köpt skott (debiteras)</label>
     <div class="field"><label>Poäng (tävling – lämna tomt om ej tävling)</label><input type="number" id="e-poang" min="0" step="0.1" placeholder="–"></div>
     <div class="field"><label>Tävling</label><select id="e-tavlingnamn"></select></div>
     <div class="field"><label>Skjutledare</label><input type="text" id="e-ledare" list="leaderList"></div>
@@ -381,7 +384,8 @@ function validDate(s){
   const d=new Date(s+"T00:00:00"); return !isNaN(d) && d.toISOString().slice(0,10)===s;
 }
 const kr = n => (Number(n)||0).toLocaleString("sv-SE",{style:"currency",currency:"SEK"});
-const rowCost = e => (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0);
+const rowCost = e => e.kopt ? (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0) : 0;
+const koptaSkott = e => e.kopt ? (+e.antal_skott||0) : 0;
 const hasPrices = +PRIS_PER_SKOTT > 0;
 
 /* ---------- data layer ---------- */
@@ -447,6 +451,7 @@ function renderLog(){
     const li=document.createElement("li");
     li.innerHTML=`<span class="nm">${esc(e.skytt)}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
+      ${e.kopt?`<span class="pill medlem">Köpt</span>`:""}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
       <span class="x" data-del="${e.id}">✕</span>
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
@@ -494,11 +499,11 @@ function renderAdmin(){
   $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#1668b0");
   // per shooter
   const map={};
-  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,dagar:new Set(),kostnad:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].kostnad+=rowCost(e);});
+  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,dagar:new Set(),kostnad:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].kostnad+=rowCost(e); map[k].kopta+=koptaSkott(e);});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
-  $("#shooterTbody").innerHTML=list.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${kr(v.kostnad)}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--ink-soft)">Inga poster</td></tr>`;
+  $("#shooterTbody").innerHTML=list.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.kostnad)}</td></tr>`).join("")||`<tr><td colspan="5" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#priceHint").textContent = hasPrices
-    ? "Pris per skott: "+kr(PRIS_PER_SKOTT)+". Kostnad per skytt = antal skott × priset."
+    ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+". Endast köpta skott debiteras – egen ammunition är gratis."
     : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
   renderAdminTable();
   renderComp();
@@ -515,6 +520,7 @@ function renderAdminTable(){
     return `<tr>
       <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td>
       <td class="num">${fmt(e.antal_skott)}</td>
+      <td>${e.kopt?"Ja":"–"}</td>
       <td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td>
       <td>${esc(e.skjutledare)}</td>
       <td>${esc(e.tavling_namn)}</td>
@@ -559,6 +565,7 @@ async function quickAdd(){
     row.tavling_namn=(pass.tavlingNamn||"").trim();
     row.poang=poangVal!==""?+poangVal:null;
   }
+  if($("#q-kopt").checked) row.kopt=true;
   $("#q-add").disabled=true;
   try{
     const saved=await addRow(row);
@@ -569,7 +576,7 @@ async function quickAdd(){
     $("#q-skytt").focus();
   }catch(err){
     const m=String(err&&err.message||err);
-    if(/tavling|poang|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
+    if(/tavling|poang|kopt|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng/köpt). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
     else alert("Kunde inte spara: "+m);
   }
   finally{ $("#q-add").disabled=false; }
@@ -607,16 +614,16 @@ function summaryRows(ye,y){
     [],["Hänvisningar","Förordning (1998:901) om egenkontroll · NFS 2005:15 (buller) · FAP 525-1 / SäkB"]);
   return r;
 }
-function logHeader(){ return ["Datum","Skytt","Antal skott","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
+function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
-    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
+    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,e.kopt?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
 }
 function payRows(ye){
   const map={};
-  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,kostnad:0}; map[k].skott+=(+e.antal_skott||0); map[k].kostnad+=rowCost(e);});
-  return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0],"sv"))
-    .map(([n,v])=>[n,v.skott,Math.round(v.kostnad*100)/100]);
+  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={kopta:0,kostnad:0}; map[k].kopta+=koptaSkott(e); map[k].kostnad+=rowCost(e);});
+  return Object.entries(map).filter(([,v])=>v.kopta>0).sort((a,b)=>a[0].localeCompare(b[0],"sv"))
+    .map(([n,v])=>[n,v.kopta,Math.round(v.kostnad*100)/100]);
 }
 function compResultRows(ye){
   return ye.filter(e=>e.tavling||(e.poang!=null&&e.poang!==""))
@@ -629,7 +636,7 @@ $("#exportCsv").addEventListener("click",()=>{
   const compBlock=comp.length?[[],["TÄVLINGSRESULTAT "+y],["Datum","Tävling","Skytt","Poäng"],...comp]:[];
   const pay=hasPrices?payRows(ye):[];
   const payTot=Math.round(ye.reduce((s,e)=>s+rowCost(e),0)*100)/100;
-  const payBlock=pay.length?[[],["ATT BETALA "+y+" – pris per skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]:[];
+  const payBlock=pay.length?[[],["ATT BETALA "+y+" – pris per köpt skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Köpta skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]:[];
   const aoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
     [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)],
     ...summaryRows(ye,y),...compBlock,...payBlock];
@@ -642,7 +649,7 @@ $("#exportXlsx").addEventListener("click",()=>{
   const jaoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
     [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)]];
   const ws1=XLSX.utils.aoa_to_sheet(jaoa);
-  ws1["!cols"]=[{wch:12},{wch:24},{wch:11},{wch:9},{wch:22},{wch:18},{wch:24},{wch:12}];
+  ws1["!cols"]=[{wch:12},{wch:24},{wch:11},{wch:6},{wch:9},{wch:22},{wch:18},{wch:24},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws1,"Skjutjournal");
   const ws2=XLSX.utils.aoa_to_sheet(summaryRows(ye,y).slice(1));
   ws2["!cols"]=[{wch:26},{wch:18}];
@@ -656,8 +663,8 @@ $("#exportXlsx").addEventListener("click",()=>{
   const pay=hasPrices?payRows(ye):[];
   if(pay.length){
     const payTot=Math.round(ye.reduce((s,e)=>s+rowCost(e),0)*100)/100;
-    const ws4=XLSX.utils.aoa_to_sheet([["Att betala "+y],["Pris per skott",PRIS_PER_SKOTT+" kr"],[],["Skytt","Skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]);
-    ws4["!cols"]=[{wch:24},{wch:10},{wch:14}];
+    const ws4=XLSX.utils.aoa_to_sheet([["Att betala "+y],["Pris per köpt skott",PRIS_PER_SKOTT+" kr"],[],["Skytt","Köpta skott","Kostnad (kr)"],...pay,["Totalt:","",payTot]]);
+    ws4["!cols"]=[{wch:24},{wch:12},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws4,"Att betala");
   }
   XLSX.writeFile(wb,`skjutjournal_${y}.xlsx`);
@@ -702,7 +709,7 @@ $("#a-year").addEventListener("change",renderAdmin);
 $("#search").addEventListener("input",renderAdminTable);
 
 // admin table edit/delete
-let editId=null, editWasComp=false;
+let editId=null, editWasComp=false, editWasKopt=false;
 $("#adminTbody").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"), de=e.target.closest("[data-del2]");
   if(ed){ const row=entries.find(x=>x.id===ed.dataset.edit); if(row)openEdit(row); }
@@ -711,7 +718,9 @@ $("#adminTbody").addEventListener("click",e=>{
 function openEdit(e){
   editId=e.id;
   editWasComp=!!(e.tavling||(e.poang!=null&&e.poang!==""));
+  editWasKopt=!!e.kopt;
   $("#e-datum").value=e.datum||""; $("#e-skytt").value=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
+  $("#e-kopt").checked=!!e.kopt;
   $("#e-poang").value=(e.poang!=null?e.poang:"");
   fillTavlingar($("#e-tavlingnamn"),"(ingen)",e.tavling_namn||"");
   $("#e-tavlingnamn").value=e.tavling_namn||"";
@@ -732,6 +741,7 @@ $("#e-save").addEventListener("click",async()=>{
     row.tavling=!!(pv!==""||tn);
     row.tavling_namn=tn;
   }
+  if(editWasKopt||$("#e-kopt").checked) row.kopt=$("#e-kopt").checked;
   try{ await updateRow(editId,row); $("#editModal").classList.remove("open"); await loadAll(); renderAll(); }
   catch(err){ alert("Kunde inte spara: "+err.message); }
 });

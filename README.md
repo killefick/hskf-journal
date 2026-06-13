@@ -54,6 +54,7 @@ create table skjuttillfallen (
   tavling boolean not null default false,
   tavling_namn text,
   poang numeric,
+  kopt boolean not null default false,
   created_by uuid default auth.uid(),
   created_at timestamptz default now()
 );
@@ -126,13 +127,14 @@ Kör en gång i SQL Editor:
 alter table skjuttillfallen
   add column if not exists tavling boolean not null default false,
   add column if not exists tavling_namn text,
-  add column if not exists poang numeric;
+  add column if not exists poang numeric,
+  add column if not exists kopt boolean not null default false;
 ```
 
 ## Pris per skott
 
 Sätts på ett ställe – `PRIS_PER_SKOTT` högst upp i `index.html` (kr per skott, decimal med
-punkt). Kostnad per skytt = antal skott × priset. Admin & analys visar "Att betala" per skytt
+punkt). Endast skott markerade som **köpt** debiteras (egen ammunition är gratis). Kostnad = köpta skott × priset. Admin & analys visar "Att betala" per skytt
 och totalt, och det följer med i exporterna.
 
 ```js
