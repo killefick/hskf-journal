@@ -117,3 +117,41 @@ Inbjudningslänken returnerar till samma adress som lösenordsåterställningen
 Authentication -> SMTP Settings. Supabases inbyggda e-postavsändare levererar
 bara till några få projektmedlemmars adresser och är hårt hastighetsbegränsad,
 så riktiga medlemsinbjudningar kommer inte fram utan egen SMTP konfigurerad.
+
+## 7. Faktura för ammunition (e-post)
+
+Admin kan skicka en klartext-faktura per e-post till varje skytt med kvarstående
+skottpengar (knapparna **Skicka faktura** / **Skicka alla fakturor** under
+**Att betala**). Fakturan listar köpta skott per datum, totalsumma, Bankgiro
+**370-4624** och meddelandet `<namn> Ammunition`. E-post per skytt sparas i en
+egen tabell; klienten läser den aldrig direkt – allt går via en admin-skyddad
+edge-funktion som skickar via Brevo.
+
+### 7a. Tabell för e-post och skickat-status
+
+```sql
+create table skytt_faktura (
+  skytt_namn      text primary key,   -- trimmad skyttnamn, matchar "Att betala"
+  email           text,
+  faktura_skickad timestamptz
+);
+
+-- RLS på utan policies: service_role (edge-funktionen) kringgår RLS, alla
+-- direkta authenticated/anon-läsningar och skrivningar nekas.
+alter table skytt_faktura enable row level security;
+```
+
+### 7b. Brevo-hemligheter och deploy
+
+Sätt API-nyckel och avsändare som funktionshemligheter (Supabase CLI, inloggad
+och länkad till projektet). Avsändaradressen måste vara verifierad i Brevo
+(Senders & domains), annars vägras utskick:
+
+```bash
+supabase secrets set \
+  BREVO_API_KEY=xkeysib-... \
+  BREVO_SENDER_EMAIL=styrelsen@hillaredsskf.se \
+  BREVO_SENDER_NAME="Hillareds skytteförening"
+
+supabase functions deploy send-invoice
+```
