@@ -773,13 +773,15 @@ $("#e-save").addEventListener("click",async()=>{
 });
 
 // password recovery modal
-$("#pw-cancel").addEventListener("click",()=>$("#pwModal").classList.remove("open"));
+$("#pw-cancel").addEventListener("click",async()=>{ $("#pwModal").classList.remove("open"); await sb.auth.signOut(); });
 $("#pwModal").addEventListener("click",e=>{if(e.target.id==="pwModal")$("#pwModal").classList.remove("open");});
 $("#pw-save").addEventListener("click",async()=>{
   const a=$("#pw-new").value, b=$("#pw-new2").value;
   if(a.length<8){ $("#pwErr").textContent="Minst 8 tecken."; return; }
   if(a!==b){ $("#pwErr").textContent="Lösenorden matchar inte."; return; }
+  const btn=$("#pw-save"); btn.disabled=true; btn.textContent="Sparar…";
   const {error}=await sb.auth.updateUser({password:a});
+  btn.disabled=false; btn.textContent="Spara lösenord";
   if(error){ $("#pwErr").textContent=error.message; return; }
   $("#pwModal").classList.remove("open");
   showBanner("ok","Lösenord uppdaterat.",5000);
@@ -896,7 +898,9 @@ async function doLogin(){
     ev.preventDefault();
     const email=$("#authEmail").value.trim();
     if(!email){ $("#authErr").textContent="Fyll i din e-post först, tryck sedan Glömt lösenord."; return; }
+    const link=ev.target; if(link.dataset.busy) return; link.dataset.busy="1"; const lbl=link.textContent; link.textContent="Skickar…";
     const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    delete link.dataset.busy; link.textContent=lbl;
     if(error){ showBanner("warn","Kunde inte skicka återställning: "+esc(error.message)); return; }
     showBanner("ok","Om kontot finns har en återställningslänk skickats till e-posten.",6000);
   });
