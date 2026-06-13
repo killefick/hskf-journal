@@ -287,6 +287,20 @@
       </div>
       <div class="empty" id="compEmpty"><div>Inga tävlingsresultat för året.</div></div>
     </div>
+
+    <div class="card" id="membersCard">
+      <div class="card-head">
+        <h2>Medlemmar <span id="memberCount" class="hint"></span></h2>
+        <button class="btn ghost tiny" id="addMemberBtn">＋ Lägg till medlem</button>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Namn</th><th>E-post</th><th>Roll</th><th></th></tr></thead>
+          <tbody id="memberTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty hide" id="memberEmpty"><div>Inga medlemmar laddade.</div></div>
+    </div>
   </div>
 
   <footer>
@@ -339,6 +353,22 @@
   <div class="m-foot">
     <button class="btn ghost" id="pw-cancel">Avbryt</button>
     <button class="btn primary" id="pw-save">Spara lösenord</button>
+  </div>
+</div></div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="modal-bg" id="memberModal"><div class="modal">
+  <div class="m-head"><h3>Lägg till medlem</h3></div>
+  <div class="m-body">
+    <div class="field"><label for="m-email">E-post</label><input type="email" id="m-email" autocomplete="off" inputmode="email"></div>
+    <div class="field"><label for="m-name">Namn</label><input type="text" id="m-name" autocomplete="off"></div>
+    <div class="field"><label for="m-role">Roll</label><select id="m-role"><option value="member">Medlem</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label for="m-pass">Lösenord (minst 8 tecken)</label><input type="text" id="m-pass" autocomplete="off"></div>
+    <div id="mErr" style="color:var(--rust-d);font-size:13px;min-height:18px"></div>
+  </div>
+  <div class="m-foot">
+    <button class="btn ghost" id="m-cancel">Avbryt</button>
+    <button class="btn primary" id="m-save">Skapa medlem</button>
   </div>
 </div></div>
 
@@ -545,6 +575,54 @@ function renderAdminTable(){
       </div></td></tr>`;
   }).join("");
 }
+/* ---------- Members (admin) ---------- */
+let members=[];
+async function loadMembers(){
+  const tb=$("#memberTbody");
+  tb.innerHTML=`<tr><td colspan="4" class="hint">Laddar…</td></tr>`;
+  const {data,error}=await sb.functions.invoke("admin-members",{body:{action:"list"}});
+  if(error||!data||!data.ok){ tb.innerHTML=""; $("#memberEmpty").classList.remove("hide"); showBanner("warn","Kunde inte ladda medlemmar: "+esc((error&&error.message)||(data&&data.error)||"okänt fel")); return; }
+  members=data.data||[];
+  renderMembers();
+}
+function renderMembers(){
+  $("#memberCount").textContent=members.length?`(${members.length})`:"";
+  $("#memberEmpty").classList.toggle("hide",members.length>0);
+  $("#memberTbody").innerHTML=members.map(m=>{
+    const isMe=m.id===_uid;
+    const other=m.role==="admin"?"member":"admin";
+    const otherLbl=other==="admin"?"Gör till admin":"Gör till medlem";
+    return `<tr>
+      <td>${esc(m.full_name)}</td>
+      <td>${esc(m.email)}</td>
+      <td><span class="pill ${m.role==="admin"?"medlem":""}">${m.role==="admin"?"Admin":"Medlem"}</span></td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="btn ghost tiny" data-role="${esc(m.id)}" data-to="${other}">${otherLbl}</button>
+        <button class="btn ghost tiny" data-reset="${esc(m.email)}">↺ Återställ</button>
+        ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
+      </td>
+    </tr>`;
+  }).join("");
+}
+$("#memberTbody").addEventListener("click",async(ev)=>{
+  const roleBtn=ev.target.closest("[data-role]");
+  const resetBtn=ev.target.closest("[data-reset]");
+  const delBtn=ev.target.closest("[data-delm]");
+  if(roleBtn){
+    const r=await sb.functions.invoke("admin-members",{body:{action:"setRole",id:roleBtn.dataset.role,role:roleBtn.dataset.to}});
+    if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ändra roll."); return; }
+    await loadMembers();
+  } else if(resetBtn){
+    const {error}=await sb.auth.resetPasswordForEmail(resetBtn.dataset.reset,{redirectTo:location.origin+location.pathname});
+    showBanner(error?"warn":"ok",error?("Kunde inte skicka: "+esc(error.message)):"Återställningsmejl skickat.",5000);
+  } else if(delBtn){
+    if(!confirm("Ta bort medlemmen permanent?")) return;
+    const r=await sb.functions.invoke("admin-members",{body:{action:"delete",id:delBtn.dataset.delm}});
+    if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ta bort: "+esc((r.data&&r.data.error)||"")); return; }
+    await loadMembers();
+  }
+});
+
 function renderComp(){
   const y=$("#a-year").value||currentYearStr();
   const rows=entriesForYear(y).filter(e=>e.tavling||(e.poang!=null&&e.poang!==""))
@@ -719,6 +797,7 @@ $("#adminBtn").addEventListener("click",()=>{
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
   renderAdmin();
+  if(isAdmin) loadMembers();
 });
 $("#logBtn").addEventListener("click",()=>{
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
@@ -793,6 +872,19 @@ $("#cfgCancel").addEventListener("click",()=>$("#dbModal").classList.remove("ope
 $("#dbModal").addEventListener("click",e=>{if(e.target.id==="dbModal")$("#dbModal").classList.remove("open");});
 $("#cfgSave").addEventListener("click",()=>{localStorage.setItem("hskf_url",$("#cfgUrl").value.trim());localStorage.setItem("hskf_key",$("#cfgKey").value.trim());location.reload();});
 
+$("#addMemberBtn").addEventListener("click",()=>{ $("#mErr").textContent=""; $("#m-email").value=""; $("#m-name").value=""; $("#m-role").value="member"; $("#m-pass").value=""; $("#memberModal").classList.add("open"); });
+$("#m-cancel").addEventListener("click",()=>$("#memberModal").classList.remove("open"));
+$("#memberModal").addEventListener("click",e=>{if(e.target.id==="memberModal")$("#memberModal").classList.remove("open");});
+$("#m-save").addEventListener("click",async()=>{
+  const email=$("#m-email").value.trim(), full_name=$("#m-name").value.trim(), role=$("#m-role").value, password=$("#m-pass").value;
+  if(password.length<8){ $("#mErr").textContent="Lösenord minst 8 tecken."; return; }
+  const r=await sb.functions.invoke("admin-members",{body:{action:"create",email,full_name,role,password}});
+  if(r.error||!r.data?.ok){ $("#mErr").textContent=(r.data&&r.data.error)||(r.error&&r.error.message)||"Kunde inte skapa medlem."; return; }
+  $("#memberModal").classList.remove("open");
+  showBanner("ok","Medlem skapad.",5000);
+  await loadMembers();
+});
+
 function showBanner(type,msg,t){
   const b=$("#banner");
   b.innerHTML=`<div class="banner ${type}"><span class="dot ${type}"></span><div>${msg}</div><span class="x" onclick="this.parentElement.remove()">✕</span></div>`;
@@ -851,6 +943,7 @@ async function enterApp(session){
   $("#authView").classList.add("hide");
   $("#logView").classList.remove("hide"); $("#adminView").classList.add("hide");
   $("#adminBtn").classList.toggle("hide", !isAdmin);   // admin-vyn bara för admin
+  $("#membersCard").classList.toggle("hide", !isAdmin);
   $("#logBtn").classList.add("hide");
   $("#logoutBtn").classList.remove("hide");
   $("#userLabel").textContent = me + (isAdmin?" · admin":""); $("#userLabel").classList.remove("hide");
