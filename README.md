@@ -4,21 +4,44 @@ Webapp för att registrera skjuttillfällen och summera skott per kalenderår. U
 egenkontroll (förordning 1998:901), bullerbedömning (NFS 2005:15) och ev. villkor.
 
 Hela appen är `index.html` – ingen byggprocess, inga beroenden. Övriga filer gör den
-installerbar som app.
+installerbar och hanterar medlemskonton.
 
 ```
-index.html      appen (HTML + CSS + JS)
-manifest.json   installerbar på hemskärm
-sw.js           service worker (offline + uppdateringsnotis)
-icons/          appikoner
+index.html                          appen (HTML + CSS + JS)
+manifest.json                       installerbar på hemskärm
+sw.js                               service worker (offline + uppdateringsnotis)
+icons/                              appikoner
+supabase/functions/admin-members/   edge-funktion för medlemshantering (admin)
+docs/supabase-setup.md              engångssteg i Supabase (RLS, deploy, redirect)
 ```
 
 ## Lägen
 
-- **Inmatning** (alla inloggade): namn + antal skott + Enter. Datum och skjutledare ställs
-  in en gång per pass. Markera passet som **tävling** för att även registrera poäng per skytt; tävlingen väljs ur en fast lista (`TAVLINGAR` i `index.html`).
-- **Admin & analys** (bara `admin`): statistik, diagram, tävlingsresultat, redigera/radera
-  poster och export till CSV/Excel.
+- **Inmatning** (medlem/admin): namn + antal skott + Enter. Datum (standard idag, kan
+  ändras) och skjutledare ställs in en gång per pass. Markera passet som **tävling** för att
+  registrera poäng per skytt; tävlingen väljs ur en fast lista (`TAVLINGAR` i `index.html`).
+- **Admin & analys**: statistik, diagram, tävlingsresultat, redigera/radera poster, markera
+  betalt, hantera medlemmar och export till CSV/Excel.
+
+## Roller
+
+Roll sätts i `profiles.role`, eller av en admin under **Admin & analys → Medlemmar**.
+
+- `member`: loggar skott och läser journalen, rättar/raderar **egna** poster. Vid redigering
+  är datum och skytt låsta så att ett pass inte råkar flyttas till fel dag.
+- `revisor`: läsbehörig granskare. Ser Admin & analys och kan exportera, men kan inte ändra,
+  radera, logga skott eller hantera medlemmar. För riktig läs-spärr på databasnivå, kör
+  revisor-policyn i `docs/supabase-setup.md`.
+- `admin`: ändrar/raderar alla poster, ändrar datum vid redigering (ÅÅÅÅ-MM-DD), markerar
+  skottpengar som betalda, hanterar medlemmar och når all analys.
+- Lokalt läge (ingen Supabase) saknar inloggning och räknas som admin – endast för test.
+
+### Medlemmar & lösenord
+
+En admin lägger till, byter roll på, skickar lösenordsåterställning till och tar bort
+medlemmar under **Medlemmar**. Inloggade kan själva återställa lösenord via "Glömt
+lösenord?" på inloggningen. Detta kräver edge-funktionen och redirect-URL:en i
+`docs/supabase-setup.md`. Enskilda skyttar behöver inga konton – de skrivs som fritext.
 
 ## Lagring
 
@@ -55,6 +78,7 @@ create table skjuttillfallen (
   tavling_namn text,
   poang numeric,
   kopt boolean not null default false,
+  betald boolean not null default false,
   created_by uuid default auth.uid(),
   created_at timestamptz default now()
 );
@@ -99,18 +123,16 @@ create policy "delete" on skjuttillfallen for delete to authenticated
 ```
 
 3. Authentication → Providers: slå på **Email**. Slå **av** "Allow new users to sign up".
-4. Authentication → Users → Add user: skapa konton för dem som ska logga (skjutledare/styrelse).
-   Lägg ev. till User metadata `{"full_name": "Förnamn Efternamn"}` så namnet förifylls.
-   Enskilda skyttar behöver inga konton – de skrivs som fritext.
-5. Gör någon till admin:
+4. Skapa det första kontot (Authentication → Users → Add user) och gör det till admin –
+   resten av medlemmarna läggs till i appen under **Medlemmar**:
 
 ```sql
 update profiles set role='admin'
   where id = (select id from auth.users where email = 'nils@exempel.se');
 ```
 
-6. Project Settings → API: kopiera **Project URL** och **anon**-nyckeln, lägg in i `CONFIG`
-   högst upp i `index.html`. Tomt = lokalt läge.
+5. Project Settings → API: kopiera **Project URL** och **anon**-nyckeln till `CONFIG` högst
+   upp i `index.html`. Tomt = lokalt läge.
 
 ```js
 const CONFIG = {
@@ -119,23 +141,30 @@ const CONFIG = {
 };
 ```
 
-### Migrering (om databasen skapades före tävlingsstödet)
+6. För medlemshantering i appen, självbetjäning av lösenord och revisor-rollens läs-spärr:
+   följ stegen i `docs/supabase-setup.md` (deploy av edge-funktion, redirect-URL, RLS).
 
-Kör en gång i SQL Editor:
+### Migrering (äldre databas)
+
+Kör de kolumner som saknas:
 
 ```sql
 alter table skjuttillfallen
   add column if not exists tavling boolean not null default false,
   add column if not exists tavling_namn text,
   add column if not exists poang numeric,
-  add column if not exists kopt boolean not null default false;
+  add column if not exists kopt boolean not null default false,
+  add column if not exists betald boolean not null default false;
 ```
 
-## Pris per skott
+## Pris och betalning
 
-Sätts på ett ställe – `PRIS_PER_SKOTT` högst upp i `index.html` (kr per skott, decimal med
-punkt). Endast skott markerade som **köpt** debiteras (egen ammunition är gratis). Kostnad = köpta skott × priset. Admin & analys visar "Att betala" per skytt
-och totalt, och det följer med i exporterna.
+`PRIS_PER_SKOTT` högst upp i `index.html` (kr per skott, decimal med punkt). Endast skott
+markerade som **köpt** debiteras – egen ammunition är gratis. Kostnad = köpta skott × priset.
+
+Admin & analys visar **Att betala** per skytt och totalt. När en skytt betalat klickar admin
+**Markera betald** på raden, vilket nollställer deras "Att betala". Posterna ligger kvar i
+journalen (flaggas `betald`) och kan ångras.
 
 ```js
 const PRIS_PER_SKOTT = 9;
@@ -143,21 +172,12 @@ const PRIS_PER_SKOTT = 9;
 
 ## Export
 
-CSV och Excel innehåller föreningsuppgifter, hela loggen (med poäng och tävlingsnamn),
-årssammanställning, signaturblock och hänvisningar. Excel får flikarna *Skjutjournal*,
-*Sammanställning*, *Tävlingsresultat* (om året har tävlingar) och *Att betala* (om pris > 0).
-
-## Roller
-
-- `member`: loggar skott och läser journalen, kan rätta/radera **egna** poster. Vid
-  redigering är datum och skytt låsta (visas men kan inte ändras) – så att ett pass inte
-  råkar flyttas till fel dag.
-- `admin`: kan ändra/radera alla poster och nå Admin & analys. Admin kan dessutom **ändra
-  datum** på en post vid redigering (anges som ÅÅÅÅ-MM-DD och valideras vid sparning).
-  Sätts i `profiles`.
-- Lokalt läge (ingen Supabase) saknar inloggning och räknas som admin – endast för test.
+CSV och Excel innehåller föreningsuppgifter, hela loggen (med köpt/betald, poäng och
+tävlingsnamn), årssammanställning, signaturblock och hänvisningar. Excel får flikarna
+*Skjutjournal*, *Sammanställning*, *Tävlingsresultat* (om året har tävlingar) och *Att betala*
+(om pris > 0). "Att betala" visar kvarstående belopp; betalt redovisas separat.
 
 ## Uppdatera installerade appar
 
-Höj `VERSION` i `sw.js` (t.ex. `v3` → `v4`) och pusha. Nästa gång appen öppnas visas
+Höj `VERSION` i `sw.js` (t.ex. `v18` → `v19`) och pusha. Nästa gång appen öppnas visas
 "Uppdatering finns" med ett klick för att ladda om.

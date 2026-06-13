@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Skjutjournal – Hillareds skytteförening</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f4c81">
@@ -45,6 +44,8 @@
     background:repeating-radial-gradient(circle, rgba(243,236,221,.10) 0 2px, transparent 2px 26px);pointer-events:none;}
   .mast-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#aacbe8;font-weight:600;margin:0 0 6px}
+  .mast-brand{display:flex;align-items:center;gap:14px}
+  .mast-logo{flex:none;border-radius:13px;box-shadow:0 2px 10px rgba(0,0,0,.28);background:rgba(255,255,255,.06)}
   h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0 0 8px;letter-spacing:-.01em}
   .sub{font-size:13px;color:#c2d7ea;max-width:660px;margin:0}
   .sub b{color:#eaf2fb;font-weight:600}
@@ -157,9 +158,12 @@
 <body>
 <header class="masthead">
   <div class="mast-inner">
-    <div>
-      <h1>Skjutjournal</h1>
-      <p class="sub"><b>Hillareds skytteförening</b></p>
+    <div class="mast-brand">
+      <img src="icons/icon-192.png" alt="HSKF" class="mast-logo" width="56" height="56">
+      <div>
+        <h1>Skjutjournal</h1>
+        <p class="sub"><b>Hillareds skytteförening</b></p>
+      </div>
     </div>
     <div class="mast-actions">
       <span id="userLabel" class="hide" style="align-self:center;color:#c2d7ea;font-size:12.5px;font-weight:600;margin-right:2px"></span>
