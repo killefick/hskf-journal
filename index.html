@@ -622,7 +622,7 @@ function renderMembers(){
       <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span></td>
       <td style="white-space:nowrap;text-align:right">
         ${sel}
-        <button class="btn ghost tiny" data-reset="${esc(m.email)}">↺ Återställ</button>
+        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
         ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
       </td>
     </tr>`;
@@ -639,7 +639,7 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
   const delBtn=ev.target.closest("[data-delm]");
   if(resetBtn){
     const {error}=await sb.auth.resetPasswordForEmail(resetBtn.dataset.reset,{redirectTo:location.origin+location.pathname});
-    showBanner(error?"warn":"ok",error?("Kunde inte skicka: "+esc(error.message)):"Återställningsmejl skickat.",5000);
+    showBanner(error?"warn":"ok",error?("Kunde inte skicka: "+esc(error.message)):"Inloggningslänk skickad.",5000);
   } else if(delBtn){
     if(!confirm("Ta bort medlemmen permanent?")) return;
     const r=await sb.functions.invoke("admin-members",{body:{action:"delete",id:delBtn.dataset.delm}});
