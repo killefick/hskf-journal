@@ -84,3 +84,36 @@ för den skytten (posterna ligger kvar i journalen). Lägg till kolumnen en gån
 alter table skjuttillfallen
   add column if not exists betald boolean not null default false;
 ```
+
+## 6. Inbjudningsmejl på svenska (för nya medlemmar)
+
+När admin skapar en medlem skickar appen en inbjudan via Supabase
+(`inviteUserByEmail`). Medlemmen klickar på länken, väljer ett eget lösenord och
+landar i appen. Två manuella inställningar krävs i Supabase-dashboarden.
+
+### 6a. Svensk mall för inbjudan
+
+Authentication -> Email Templates -> "Invite user". Sätt ämne och brödtext, och
+behåll variabeln `{{ .ConfirmationURL }}` som länk:
+
+**Ämne:**
+
+    Välkommen till Hillareds skytteförenings skjutjournal
+
+**Brödtext (HTML):**
+
+    <h2>Välkommen till Hillareds skytteförening</h2>
+    <p>Ett konto har skapats åt dig i föreningens digitala skjutjournal.</p>
+    <p>Klicka på länken nedan för att välja ett lösenord och logga in:</p>
+    <p><a href="{{ .ConfirmationURL }}">Välj lösenord och logga in</a></p>
+    <p>När du har loggat in kan du registrera dina skjuttillfällen och se din statistik.</p>
+    <p>Om du inte väntade dig det här mejlet kan du bortse från det.</p>
+
+Inbjudningslänken returnerar till samma adress som lösenordsåterställningen
+(redirect-URL från steg 3) — ingen ny URL behöver läggas till.
+
+### 6b. Egen SMTP (krävs)
+
+Authentication -> SMTP Settings. Supabases inbyggda e-postavsändare levererar
+bara till några få projektmedlemmars adresser och är hårt hastighetsbegränsad,
+så riktiga medlemsinbjudningar kommer inte fram utan egen SMTP konfigurerad.
