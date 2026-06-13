@@ -209,15 +209,15 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Registrera skytt</h2><span class="hint">Skriv namn + antal skott, tryck Enter.</span></div>
+      <div class="card-head"><h2>Registrera skytt</h2></div>
       <div class="card-body">
         <div class="quick">
-          <div class="field"><label for="q-skytt">Skytt (namn)</label><input type="text" id="q-skytt" placeholder="För- och efternamn" autocomplete="off"></div>
+          <div class="field"><label for="q-skytt">Namn</label><input type="text" id="q-skytt" placeholder="För- och efternamn" autocomplete="off"></div>
           <div class="field"><label for="q-skott">Antal skott</label><input type="number" id="q-skott" min="0" step="1" inputmode="numeric" enterkeyhint="next" placeholder="0"></div>
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
-        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras per skott)</label>
+        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras per skott i slutet av året)</label>
         <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
           <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
@@ -356,12 +356,12 @@ const PRIS_PER_SKOTT = 9;
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
+  "Övningsskjutning",
   "FSR Propagandatävlan",
   "Vårpokalen",
   "D. von Schedvins vandringspris",
   "Korporationsskjutning",
   "Höstpokalen",
-  "Övningsskjutning",
 ];
 
 const LS = { url:localStorage.getItem("hskf_url")||"", key:localStorage.getItem("hskf_key")||"" };
