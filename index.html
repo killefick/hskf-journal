@@ -275,7 +275,7 @@
           <div class="stat"><div class="label">Att betala totalt</div><div class="v" id="s-cost">0</div></div>
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
-        <div style="margin-top:20px"><div class="label" style="margin-bottom:8px">Skott &amp; kostnad per skytt</div>
+        <div style="margin-top:20px"><div class="label" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">Skott &amp; kostnad per skytt <button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button></div>
           <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Att betala</th><th></th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
           <p class="hint" id="priceHint" style="margin:8px 2px 0"></p>
         </div>
@@ -551,6 +551,45 @@ function barChart(pairs,unitColor){
   });
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><line x1="0" y1="${H-pad}" x2="${W}" y2="${H-pad}" stroke="#d8cfba"/>${bars}</svg>`;
 }
+// Laddar e-post + senast-skickat per skytt (endast admin, via edge-funktionen).
+async function loadFakturaMeta(){
+  if(!REMOTE||!isAdmin){ fakturaMeta={}; return; }
+  const {data,error}=await sb.functions.invoke("send-invoice",{body:{action:"meta"}});
+  if(error||!data||!data.ok){ fakturaMeta={}; return; }
+  const m={};
+  (data.data||[]).forEach(r=>{ m[(r.skytt_namn||"").trim()]={email:r.email||"",faktura_skickad:r.faktura_skickad||null}; });
+  fakturaMeta=m;
+  renderAdmin();
+}
+
+// Bygger klartext-faktura för en skytt och ett år. Fakturerar endast kvarstående
+// (köpt & ej betald) skott, en rad per skjutdag.
+function buildInvoiceText(name, year){
+  const byDate={};
+  entriesForYear(year)
+    .filter(e=>(e.skytt||"–").trim()===name && e.kopt && !e.betald && (+e.antal_skott||0)>0)
+    .forEach(e=>{ byDate[e.datum]=(byDate[e.datum]||0)+(+e.antal_skott||0); });
+  const dates=Object.keys(byDate).sort();
+  const totalSkott=dates.reduce((s,d)=>s+byDate[d],0);
+  const totalKr=totalSkott*(+PRIS_PER_SKOTT||0);
+  const lines=dates.map(d=>`  ${d}    ${fmt(byDate[d])} skott`);
+  const subject=`Faktura ammunition – Hillareds skytteförening ${year}`;
+  const text=
+`Hej ${name},
+
+Faktura för ammunition – Hillareds skytteförening ${year}.
+
+Köpta skott:
+${lines.join("\n")}
+Totalt: ${fmt(totalSkott)} skott × ${fmt(PRIS_PER_SKOTT)} kr = ${fmt(totalKr)} kr
+
+Betalas till Bankgiro: 370-4624
+Ange som meddelande: ${name} Ammunition
+
+Tack!
+Hillareds skytteförening`;
+  return { subject, text, totalSkott, totalKr };
+}
 function renderAdmin(){
   refreshYears();
   const y=$("#a-year").value||currentYearStr();
@@ -573,12 +612,21 @@ function renderAdmin(){
   ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e);});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
+    const fm=fakturaMeta[n]||{};
+    const fakturaInfo=(isAdmin&&hasPrices&&REMOTE&&v.out>0)
+      ? `<div style="margin-top:4px;font-weight:400">`
+        + (fm.email?`<span class="hint">${esc(fm.email)}</span>`:`<span class="hint" style="color:#b00020">ingen e-post</span>`)
+        + ` <button class="btn ghost tiny" data-mailedit="${esc(n)}">✎ e-post</button>`
+        + (fm.faktura_skickad?` <span class="pill medlem">Skickad ${esc(String(fm.faktura_skickad).slice(0,10))}</span>`:``)
+        + `</div>`
+      : "";
     const act = !isAdmin||!hasPrices ? ""
-      : v.out>0 ? `<button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>`
+      : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}">Skicka faktura</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
     return `<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td style="text-align:right;white-space:nowrap">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
+  $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices&&REMOTE&&list.some(([,v])=>v.out>0)));
   $("#priceHint").textContent = hasPrices
     ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+". Endast köpta skott debiteras – egen ammunition är gratis."
     : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
@@ -611,6 +659,8 @@ function renderAdminTable(){
 }
 /* ---------- Members (admin) ---------- */
 let members=[];
+// skytt_namn -> { email, faktura_skickad } (laddas admin-gated via send-invoice)
+let fakturaMeta={};
 const roleLabel = r => r==="admin"?"Admin":r==="revisor"?"Revisor":"Medlem";
 const rolePill = r => r==="admin"?"gast":r==="revisor"?"revisor":"medlem";
 async function loadMembers(){
@@ -902,7 +952,7 @@ $("#adminBtn").addEventListener("click",()=>{
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
   renderAdmin();
-  if(isAdmin && REMOTE) loadMembers();
+  if(isAdmin && REMOTE){ loadMembers(); loadFakturaMeta(); }
 });
 $("#logBtn").addEventListener("click",()=>{
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
@@ -925,11 +975,73 @@ async function setShooterPaid(name,year,paid){
   await loadAll(); renderAll();
   showBanner("ok",paid?`${name} markerad som betald (${year}).`:`Betald-markering ångrad för ${name} (${year}).`,4000);
 }
+// Skickar en faktura till en skytt. Frågar efter e-post om den saknas och sparar den.
+async function sendFaktura(name, year){
+  const fm=fakturaMeta[name]||{};
+  let email=fm.email;
+  if(!email){
+    email=(prompt(`E-postadress för faktura till ${name}:`)||"").trim();
+    if(!email) return false;
+    const sv=await sb.functions.invoke("send-invoice",{body:{action:"saveEmail",skytt_namn:name,email}});
+    if(sv.error||!sv.data?.ok){ showBanner("warn","Kunde inte spara e-post: "+esc((sv.data&&sv.data.error)||(sv.error&&sv.error.message)||"okänt fel")); return false; }
+    fakturaMeta[name]={...fm,email};
+  }
+  const {subject,text}=buildInvoiceText(name,year);
+  const r=await sb.functions.invoke("send-invoice",{body:{action:"send",skytt_namn:name,email,subject,text}});
+  if(r.error||!r.data?.ok){ showBanner("warn",`Kunde inte skicka faktura till ${esc(name)}: `+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return false; }
+  fakturaMeta[name]={email,faktura_skickad:new Date().toISOString()};
+  return true;
+}
+// Ändrar/sätter sparad e-post för en skytt (utan att skicka).
+async function editFakturaEmail(name){
+  const cur=(fakturaMeta[name]&&fakturaMeta[name].email)||"";
+  const email=(prompt(`E-postadress för ${name}:`,cur)||"").trim();
+  if(!email||email===cur) return;
+  const sv=await sb.functions.invoke("send-invoice",{body:{action:"saveEmail",skytt_namn:name,email}});
+  if(sv.error||!sv.data?.ok){ showBanner("warn","Kunde inte spara e-post: "+esc((sv.data&&sv.data.error)||(sv.error&&sv.error.message)||"okänt fel")); return; }
+  fakturaMeta[name]={...(fakturaMeta[name]||{}),email};
+  renderAdmin();
+}
 $("#shooterTbody").addEventListener("click",async e=>{
   if(!isAdmin) return;
   const p=e.target.closest("[data-paid]"), u=e.target.closest("[data-unpaid]");
-  if(p && confirm(`Markera ${p.dataset.paid}s köpta skott som betalda för ${p.dataset.y}?`)) await setShooterPaid(p.dataset.paid,p.dataset.y,true);
+  const f=e.target.closest("[data-faktura]"), me=e.target.closest("[data-mailedit]");
+  if(f){
+    if(confirm(`Skicka faktura till ${f.dataset.faktura}?`)){
+      if(await sendFaktura(f.dataset.faktura,f.dataset.y)) showBanner("ok",`Faktura skickad till ${esc(f.dataset.faktura)}.`,4000);
+      renderAdmin();
+    }
+  }
+  else if(me){ await editFakturaEmail(me.dataset.mailedit); }
+  else if(p && confirm(`Markera ${p.dataset.paid}s köpta skott som betalda för ${p.dataset.y}?`)) await setShooterPaid(p.dataset.paid,p.dataset.y,true);
   else if(u && confirm(`Ångra betald-markering för ${u.dataset.unpaid} (${u.dataset.y})?`)) await setShooterPaid(u.dataset.unpaid,u.dataset.y,false);
+});
+// Skicka alla fakturor: alla skyttar med kvarstående belopp för året.
+$("#sendAllFaktura").addEventListener("click",async()=>{
+  if(!isAdmin) return;
+  const y=$("#a-year").value||currentYearStr();
+  const out={};
+  entriesForYear(y).forEach(e=>{const k=(e.skytt||"–").trim(); out[k]=(out[k]||0)+rowOutstanding(e);});
+  const targets=Object.keys(out).filter(n=>out[n]>0);
+  if(!targets.length){ showBanner("warn","Inga skyttar med kvarstående belopp."); return; }
+  const missing=targets.filter(n=>!(fakturaMeta[n]&&fakturaMeta[n].email));
+  const already=targets.filter(n=>fakturaMeta[n]&&fakturaMeta[n].email&&fakturaMeta[n].faktura_skickad);
+  let skipAlready=false;
+  if(already.length){
+    skipAlready=!confirm(`Faktura har redan skickats till: ${already.join(", ")}.\nOK = skicka igen även till dem. Avbryt = hoppa över dem och skicka till övriga.`);
+  }
+  const recipients=targets.filter(n=>fakturaMeta[n]&&fakturaMeta[n].email&&!(skipAlready&&fakturaMeta[n].faktura_skickad));
+  if(!recipients.length){ showBanner("warn","Inga mottagare att skicka till."); return; }
+  if(!confirm(`Skicka faktura till ${recipients.length} skytt(ar)?${missing.length?` (${missing.length} saknar e-post och hoppas över)`:""}`)) return;
+  let sent=0, failed=0;
+  for(const n of recipients){
+    const fm=fakturaMeta[n];
+    const {subject,text}=buildInvoiceText(n,y);
+    const r=await sb.functions.invoke("send-invoice",{body:{action:"send",skytt_namn:n,email:fm.email,subject,text}});
+    if(r.error||!r.data?.ok){ failed++; } else { sent++; fakturaMeta[n]={email:fm.email,faktura_skickad:new Date().toISOString()}; }
+  }
+  renderAdmin();
+  showBanner(failed?"warn":"ok",`Skickade ${sent} faktura/-or.${failed?` ${failed} misslyckades.`:""}${missing.length?` Saknar e-post: ${esc(missing.join(", "))}.`:""}`,7000);
 });
 
 // admin table edit/delete
