@@ -678,9 +678,9 @@ function fillTavlingar(sel,emptyLabel,extra){
 /* ---------- events ---------- */
 // pass settings persistence
 $("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
-$("#p-datum").addEventListener("change",()=>{
-  pass.datum=$("#p-datum").value||today();
-  if(!$("#p-datum").value) $("#p-datum").value=pass.datum;
+$("#p-datum").addEventListener("change",e=>{
+  pass.datum=e.target.value||today();
+  if(!e.target.value) e.target.value=pass.datum;
   savePass();
   renderLog();
 });
