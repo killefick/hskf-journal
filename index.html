@@ -1161,6 +1161,9 @@ $("#m-save").addEventListener("click",async()=>{
   if(renamed>0) msg+=` ${renamed} journalpost${renamed===1?"":"er"} omdöpt${renamed===1?"":"a"}.`;
   showBanner("ok",msg,5000);
   await loadMembers();
+  // A rename touched journal rows in the DB; refresh the in-memory entries so the
+  // log/Tävling/Totals/Att betala views reflect the new name without a reload.
+  if(renamed>0){ await loadAll(); renderAll(); }
 });
 
 function showBanner(type,msg,t){
