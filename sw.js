@@ -3,7 +3,7 @@
    CDN/Supabase går alltid mot nätet.
    OBS: höj VERSION nedan när du pushar en ny version så att installerade
    användare får notisen "Uppdatering finns". */
-const VERSION = "v27";
+const VERSION = "v28";
 const CACHE = "hskf-" + VERSION;
 const ASSETS = ["./","./index.html","./manifest.json","./favicon.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"];
 

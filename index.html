@@ -343,7 +343,7 @@
   <div class="m-head"><h3>Ändra post</h3></div>
   <div class="m-body">
     <div class="field"><label>Datum</label><div id="e-datum-wrap"></div></div>
-    <div class="field"><label>Skytt</label><div id="e-skytt" class="datum-fast"></div></div>
+    <div class="field"><label>Skytt</label><div id="e-skytt-wrap"></div></div>
     <div class="field"><label>Antal skott</label><input type="number" id="e-skott" min="0"></div>
     <label class="comp-toggle"><input type="checkbox" id="e-kopt"> Köpt skott (debiteras)</label>
     <div class="field"><label>Poäng (tävling – lämna tomt om ej tävling)</label><input type="number" id="e-poang" min="0" step="0.1" placeholder="–"></div>
@@ -948,7 +948,11 @@ function openEdit(e){
     ? '<input type="text" id="e-datum" inputmode="numeric" maxlength="10" placeholder="ÅÅÅÅ-MM-DD">'
     : '<div id="e-datum" class="datum-fast"></div>';
   if(isAdmin) $("#e-datum").value=e.datum||""; else $("#e-datum").textContent=e.datum||"";
-  $("#e-skytt").textContent=e.skytt||""; $("#e-skott").value=e.antal_skott||"";
+  $("#e-skytt-wrap").innerHTML = isAdmin
+    ? '<input type="text" id="e-skytt" autocomplete="off">'
+    : '<div id="e-skytt" class="datum-fast"></div>';
+  if(isAdmin) $("#e-skytt").value=e.skytt||""; else $("#e-skytt").textContent=e.skytt||"";
+  $("#e-skott").value=e.antal_skott||"";
   $("#e-kopt").checked=!!e.kopt;
   $("#e-poang").value=(e.poang!=null?e.poang:"");
   fillTavlingar($("#e-tavlingnamn"),"(ingen)",e.tavling_namn||"");
@@ -965,6 +969,9 @@ $("#e-save").addEventListener("click",async()=>{
     const d=$("#e-datum").value.trim();
     if(!validDate(d)){ alert("Ange datum som ÅÅÅÅ-MM-DD."); return; }
     row.datum=d;
+    const namn=$("#e-skytt").value.trim();
+    if(!namn){ alert("Ange ett namn."); return; }
+    row.skytt=namn;
   }
   const pv=$("#e-poang").value, tn=$("#e-tavlingnamn").value.trim();
   if(editWasComp||pv!==""||tn){
