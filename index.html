@@ -738,6 +738,7 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
     const r=await sb.functions.invoke("admin-members",{body:{action:"delete",id:delBtn.dataset.delm}});
     if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ta bort: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return; }
     await loadMembers();
+    await loadDirectory(); renderSkyttPicker();
   }
 });
 
@@ -1188,15 +1189,12 @@ $("#m-save").addEventListener("click",async()=>{
   btn.disabled=false; btn.textContent=btnLabel;
   if(r.error||!r.data?.ok){ $("#mErr").textContent=(r.data&&r.data.error)||(r.error&&r.error.message)||"Kunde inte spara."; return; }
   $("#memberModal").classList.remove("open");
-  let msg=editingMemberId?"Medlem uppdaterad.":"Inbjudan skickad.";
-  const renamed=editingMemberId?(r.data?.data?.renamed||0):0;
-  if(renamed>0) msg+=` ${renamed} journalpost${renamed===1?"":"er"} omdöpt${renamed===1?"":"a"}.`;
+  const msg=editingMemberId?"Medlem uppdaterad.":"Inbjudan skickad.";
   showBanner("ok",msg,5000);
   await loadMembers();
-  // A rename touched journal rows (and the faktura record) in the DB; refresh the
-  // in-memory entries and faktura-meta so the log/Tävling/Totals/Att betala views
-  // reflect the new name without a reload.
-  if(renamed>0){ await loadAll(); await loadFakturaMeta(); renderAll(); }
+  // Names resolve through the directory, so a rename only needs a fresh directory
+  // + re-render; no journal/faktura propagation. Refresh the picker too.
+  await loadDirectory(); renderSkyttPicker(); renderAll();
 });
 
 function showBanner(type,msg,t){
