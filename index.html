@@ -44,7 +44,7 @@
     background:repeating-radial-gradient(circle, rgba(243,236,221,.10) 0 2px, transparent 2px 26px);pointer-events:none;}
   .mast-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#aacbe8;font-weight:600;margin:0 0 6px}
-  .mast-brand{display:flex;align-items:center;gap:14px}
+  .mast-brand{display:flex;align-items:center;gap:14px;cursor:pointer}
   .mast-logo{flex:none;border-radius:13px;box-shadow:0 2px 10px rgba(0,0,0,.28);background:rgba(255,255,255,.06)}
   h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0 0 8px;letter-spacing:-.01em}
   .sub{font-size:13px;color:#c2d7ea;max-width:660px;margin:0}
@@ -164,7 +164,7 @@
 <body>
 <header class="masthead">
   <div class="mast-inner">
-    <div class="mast-brand">
+    <div class="mast-brand" id="brandHome" title="Till inmatning">
       <img src="icons/icon-192.png" alt="HSKF" class="mast-logo" width="56" height="56">
       <div>
         <h1>Skjutjournal</h1>
@@ -1011,6 +1011,9 @@ $("#logBtn").addEventListener("click",()=>{
   $("#logBtn").classList.add("hide"); $("#adminBtn").classList.remove("hide");
   renderLog();
 });
+// Klick på loggan/rubriken = samma som "Till inmatning", men bara när den knappen
+// är synlig (admin i admin-vyn) — så medlem/revisor/inloggning påverkas inte.
+$("#brandHome").addEventListener("click",()=>{ const b=$("#logBtn"); if(!b.classList.contains("hide")) b.click(); });
 $("#a-year").addEventListener("change",renderAdmin);
 function setAdminTab(id){
   document.querySelectorAll("#adminView .tab-panel").forEach(p=>p.classList.toggle("hide", p.id!==id));
