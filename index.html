@@ -472,6 +472,20 @@ async function loadAll(){
   } else { entries=local.read(); }
   entries.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
 }
+// id -> full_name for every member, readable by all roles via the
+// member_directory view. Lets any view resolve a shooter name from skytt_id.
+let dirById = new Map();
+async function loadDirectory(){
+  if(!REMOTE){ dirById = new Map(); return; }
+  const {data,error}=await sb.from("member_directory").select("id,full_name");
+  if(error){ showBanner("warn","Kunde inte läsa medlemskatalogen: "+esc(error.message)); return; }
+  dirById = new Map((data||[]).map(r=>[r.id, r.full_name||""]));
+}
+function nameOf(id){ return dirById.get(id) || "(okänd)"; }
+// Members sorted by name, for the logging/edit pickers.
+function directoryOptions(){
+  return [...dirById.entries()].sort((a,b)=>a[1].localeCompare(b[1],"sv"));
+}
 async function addRow(row){
   if(REMOTE){ const {data,error}=await sb.from(TABLE).insert(row).select(); if(error)throw error; return data&&data[0]; }
   row.id=crypto.randomUUID(); const a=local.read(); a.push(row); local.write(a); return row;
@@ -1234,7 +1248,7 @@ async function enterApp(session){
   $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
   if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
   applyPassToForm();
-  await loadAll(); renderAll();
+  await loadDirectory(); await loadAll(); renderAll();
   if(!isRevisor) $("#q-skytt").focus();
 }
 let _uid=undefined;
