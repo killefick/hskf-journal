@@ -820,7 +820,8 @@ function compTotals(rows){
 }
 function renderComp(){
   const y=$("#a-year").value||currentYearStr();
-  const rows=entriesForYear(y).filter(e=>e.tavling||(e.poang!=null&&e.poang!==""));
+  // Övningsskjutning är träning, inte tävling — visas inte under Tävlingar.
+  const rows=entriesForYear(y).filter(e=>(e.tavling||(e.poang!=null&&e.poang!==""))&&(e.tavling_namn||"").trim()!=="Övningsskjutning");
   $("#compCount").textContent=`(${rows.length})`;
   $("#compEmpty").style.display=rows.length?"none":"block";
   $("#compTables").innerHTML=compGroups(rows).map(([name,list])=>{
