@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     if (action === "list") {
       const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
       if (error) throw error;
-      const { data: profs, error: pErr } = await admin.from("profiles").select("id, full_name, role");
+      const { data: profs, error: pErr } = await admin.from("profiles").select("id, full_name, role, active");
       if (pErr) throw pErr;
       const byId = new Map((profs ?? []).map((p: any) => [p.id, p]));
       const members = list.users.map((u: any) => ({
@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
         email: u.email,
         full_name: byId.get(u.id)?.full_name ?? "",
         role: byId.get(u.id)?.role ?? "member",
+        active: byId.get(u.id)?.active ?? true,
       }));
       return json({ ok: true, data: members });
     }
@@ -101,6 +102,28 @@ Deno.serve(async (req) => {
       if (upErr) throw upErr;
 
       return json({ ok: true, data: { id, email, full_name: newName } });
+    }
+
+    if (action === "deactivate") {
+      const { id } = payload;
+      if (!id) return json({ ok: false, error: "id saknas" }, 400);
+      if (id === callerId) return json({ ok: false, error: "Du kan inte inaktivera ditt eget konto" }, 400);
+      const { error: upErr } = await admin.from("profiles").upsert({ id, active: false });
+      if (upErr) throw upErr;
+      // Block the login too (reversible). ~100 years.
+      const { error: banErr } = await admin.auth.admin.updateUserById(id, { ban_duration: "876000h" });
+      if (banErr) throw banErr;
+      return json({ ok: true, data: { id, active: false } });
+    }
+
+    if (action === "reactivate") {
+      const { id } = payload;
+      if (!id) return json({ ok: false, error: "id saknas" }, 400);
+      const { error: upErr } = await admin.from("profiles").upsert({ id, active: true });
+      if (upErr) throw upErr;
+      const { error: banErr } = await admin.auth.admin.updateUserById(id, { ban_duration: "none" });
+      if (banErr) throw banErr;
+      return json({ ok: true, data: { id, active: true } });
     }
 
     if (action === "delete") {
