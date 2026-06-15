@@ -154,4 +154,40 @@ supabase secrets set \
   BREVO_SENDER_NAME="Hillareds skytteförening"
 
 supabase functions deploy send-invoice
-```
+
+## 8. Normalize shooter references to member id (2026-06-15)
+
+Shooters are now referenced by member id, not a free-text name. Only test data
+existed, so this wipes and recreates — no backfill. Run in the SQL editor:
+
+````sql
+-- 1. Clear test data (no real data exists yet)
+delete from public.skjuttillfallen;
+delete from public.skytt_faktura;
+
+-- 2. Replace the free-text shooter name with a member-id reference
+alter table public.skjuttillfallen drop column if exists skytt;
+alter table public.skjuttillfallen
+  add column skytt_id uuid not null
+  references public.profiles(id) on delete restrict;
+
+-- 3. Re-key the invoice table by member id
+alter table public.skytt_faktura drop constraint if exists skytt_faktura_pkey;
+alter table public.skytt_faktura drop column if exists skytt_namn;
+alter table public.skytt_faktura
+  add column skytt_id uuid primary key
+  references public.profiles(id) on delete restrict;
+
+-- 4. Read-only id -> name directory for all authenticated users.
+--    security_invoker = off (definer) so it bypasses the profiles self-read RLS,
+--    but exposes ONLY id and full_name — never role or email.
+drop view if exists public.member_directory;
+create view public.member_directory
+  with (security_invoker = off) as
+  select id, full_name from public.profiles;
+
+grant select on public.member_directory to authenticated;
+````
+
+A member rename is now just `update public.profiles set full_name = … where id = …`;
+no journal/invoice propagation is needed.
