@@ -90,6 +90,23 @@ Deno.serve(async (req) => {
       return json({ ok: true, data: { skytt_id, email } });
     }
 
+    if (action === "restore") {
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
+      if (!rows.length) return json({ ok: true, data: { restored: 0, skipped: 0 } });
+      // Only upsert billing rows whose member still exists (FK skytt_id -> profiles).
+      const { data: profs, error: pErr } = await admin.from("profiles").select("id");
+      if (pErr) throw pErr;
+      const ids = new Set((profs ?? []).map((p: any) => p.id));
+      const valid = rows
+        .filter((r: any) => r && ids.has(r.skytt_id))
+        .map((r: any) => ({ skytt_id: r.skytt_id, email: r.email ?? null, faktura_skickad: r.faktura_skickad ?? null }));
+      if (valid.length) {
+        const { error } = await admin.from("skytt_faktura").upsert(valid);
+        if (error) throw error;
+      }
+      return json({ ok: true, data: { restored: valid.length, skipped: rows.length - valid.length } });
+    }
+
     return json({ ok: false, error: "Okänd action" }, 400);
   } catch (e) {
     return json({ ok: false, error: (e as Error).message }, 500);
