@@ -765,7 +765,7 @@ function compGroups(rows){
 }
 // Pure: per-shooter season standings from real competition rows (excludes
 // Övningsskjutning and unnamed). Each competition is one day; the winner(s) are the
-// top score that day. Returns [{skytt,total,tavlingar,segrar}] sorted total desc,
+// top score that day. Returns [{id,total,tavlingar,segrar}] sorted total desc,
 // then segrar desc, then name (sv).
 function compTotals(rows){
   const byComp=new Map();
