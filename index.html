@@ -119,6 +119,7 @@
   .pill.medlem{background:#dcebf8;color:#0f4c81}
   .pill.gast{background:#f6e3d5;color:#8f3f1d}
   .pill.revisor{background:#e6e2f3;color:#4b3f7a}
+  .pill.inaktiv{background:#e4e2db;color:#6a6a5e}
 
   /* admin dashboard */
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
@@ -708,11 +709,14 @@ function renderMembers(){
     return `<tr>
       <td>${esc(m.full_name)}</td>
       <td>${esc(m.email)}</td>
-      <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span></td>
+      <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span>${m.active===false?` <span class="pill inaktiv">Inaktiv</span>`:""}</td>
       <td style="white-space:nowrap;text-align:right">
         ${sel}
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}">✎ Redigera</button>
         <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
+        ${isMe?"":(m.active===false
+          ? `<button class="btn ghost tiny" data-react="${esc(m.id)}">↻ Återaktivera</button>`
+          : `<button class="btn ghost tiny" data-deact="${esc(m.id)}">⏸ Inaktivera</button>`)}
         ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
       </td>
     </tr>`;
@@ -739,6 +743,8 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
   }
   const resetBtn=ev.target.closest("[data-reset]");
   const delBtn=ev.target.closest("[data-delm]");
+  const deactBtn=ev.target.closest("[data-deact]");
+  const reactBtn=ev.target.closest("[data-react]");
   if(resetBtn){
     const {error}=await sb.auth.resetPasswordForEmail(resetBtn.dataset.reset,{redirectTo:location.origin+location.pathname});
     showBanner(error?"warn":"ok",error?("Kunde inte skicka: "+esc(error.message)):"Inloggningslänk skickad.",5000);
@@ -746,6 +752,20 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
     if(!confirm("Ta bort medlemmen permanent?")) return;
     const r=await sb.functions.invoke("admin-members",{body:{action:"delete",id:delBtn.dataset.delm}});
     if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ta bort: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return; }
+    await loadMembers();
+    await loadDirectory(); renderSkyttPicker();
+  } else if(deactBtn){
+    const nm=members.find(m=>m.id===deactBtn.dataset.deact)?.full_name||"";
+    if(!confirm(`Inaktivera ${nm}? Hen kan inte längre logga in eller registreras på nya pass.`)) return;
+    const r=await sb.functions.invoke("admin-members",{body:{action:"deactivate",id:deactBtn.dataset.deact}});
+    if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte inaktivera: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return; }
+    await loadMembers();
+    await loadDirectory(); renderSkyttPicker();
+  } else if(reactBtn){
+    const nm=members.find(m=>m.id===reactBtn.dataset.react)?.full_name||"";
+    if(!confirm(`Återaktivera ${nm}?`)) return;
+    const r=await sb.functions.invoke("admin-members",{body:{action:"reactivate",id:reactBtn.dataset.react}});
+    if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte återaktivera: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); return; }
     await loadMembers();
     await loadDirectory(); renderSkyttPicker();
   }
