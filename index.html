@@ -472,19 +472,28 @@ async function loadAll(){
   } else { entries=local.read(); }
   entries.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
 }
-// id -> full_name for every member, readable by all roles via the
-// member_directory view. Lets any view resolve a shooter name from skytt_id.
+// id -> { name, active } for every member, readable by all roles via the
+// member_directory view. Inactive members stay in the map so historical entries
+// still resolve a name; only the pickers filter them out.
 let dirById = new Map();
 async function loadDirectory(){
   if(!REMOTE){ dirById = new Map(); return; }
-  const {data,error}=await sb.from("member_directory").select("id,full_name");
+  const {data,error}=await sb.from("member_directory").select("id,full_name,active");
   if(error){ showBanner("warn","Kunde inte läsa medlemskatalogen: "+esc(error.message)); return; }
-  dirById = new Map((data||[]).map(r=>[r.id, r.full_name||""]));
+  dirById = new Map((data||[]).map(r=>[r.id, {name:r.full_name||"", active:r.active!==false}]));
 }
-function nameOf(id){ return dirById.get(id) || "(okänd)"; }
-// Members sorted by name, for the logging/edit pickers.
+function nameOf(id){ return dirById.get(id)?.name || "(okänd)"; }
+// Active members sorted by name, for the logging/edit pickers.
 function directoryOptions(){
-  return [...dirById.entries()].sort((a,b)=>a[1].localeCompare(b[1],"sv"));
+  return [...dirById.entries()].filter(([,v])=>v.active).map(([id,v])=>[id,v.name])
+    .sort((a,b)=>a[1].localeCompare(b[1],"sv"));
+}
+// Edit picker = active members PLUS the entry's current shooter even if now
+// inactive, so editing an old entry never silently reassigns it.
+function editPickerOptions(currentId){
+  const opts=directoryOptions();
+  if(currentId && !opts.some(([id])=>id===currentId)) opts.unshift([currentId, nameOf(currentId)+" (inaktiv)"]);
+  return opts;
 }
 async function addRow(row){
   if(REMOTE){ const {data,error}=await sb.from(TABLE).insert(row).select(); if(error)throw error; return data&&data[0]; }
@@ -1107,7 +1116,7 @@ function openEdit(e){
     : '<div id="e-datum" class="datum-fast"></div>';
   if(isAdmin) $("#e-datum").value=e.datum||""; else $("#e-datum").textContent=e.datum||"";
   $("#e-skytt-wrap").innerHTML = isAdmin
-    ? `<select id="e-skytt">`+directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+`</select>`
+    ? `<select id="e-skytt">`+editPickerOptions(e.skytt_id).map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+`</select>`
     : '<div id="e-skytt" class="datum-fast"></div>';
   if(isAdmin) $("#e-skytt").value=e.skytt_id||""; else $("#e-skytt").textContent=nameOf(e.skytt_id);
   $("#e-skott").value=e.antal_skott||"";
