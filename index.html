@@ -1014,6 +1014,7 @@ $("#exportXlsx").addEventListener("click",()=>{
 function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); }
 // Admin: download a complete JSON snapshot (journal + billing + member reference).
 async function downloadBackup(){
+  if(!isAdmin) return;
   const btn=$("#backupBtn"), lbl=btn.textContent; btn.disabled=true; btn.textContent="Säkerhetskopierar…";
   try{
     const mem=await sb.functions.invoke("admin-members",{body:{action:"list"}});
@@ -1034,10 +1035,10 @@ async function downloadBackup(){
 $("#backupBtn").addEventListener("click",downloadBackup);
 // Admin: restore from a backup file. Non-destructive merge/upsert by id; rows
 // whose member no longer exists are skipped and reported.
-$("#restoreBtn").addEventListener("click",()=>$("#restoreFile").click());
+$("#restoreBtn").addEventListener("click",()=>{ if(!isAdmin)return; $("#restoreFile").click(); });
 $("#restoreFile").addEventListener("change",async ev=>{
   const file=ev.target.files&&ev.target.files[0]; ev.target.value="";
-  if(!file) return;
+  if(!file||!isAdmin) return;
   let backup;
   try{ backup=JSON.parse(await file.text()); }catch{ showBanner("warn","Ogiltig fil (inte giltig JSON)."); return; }
   if(!backup||backup.meta?.app!=="hskf-journal"||backup.meta?.format!==1||!Array.isArray(backup.skjuttillfallen)||!Array.isArray(backup.skytt_faktura)){
@@ -1267,10 +1268,10 @@ $("#pw-save").addEventListener("click",async()=>{
 });
 
 // db settings
-$("#dbSettings").addEventListener("click",()=>{$("#cfgUrl").value=LS.url;$("#cfgKey").value=LS.key;$("#dbModal").classList.add("open");});
+$("#dbSettings").addEventListener("click",()=>{ if(!isAdmin)return; $("#cfgUrl").value=LS.url;$("#cfgKey").value=LS.key;$("#dbModal").classList.add("open");});
 $("#cfgCancel").addEventListener("click",()=>$("#dbModal").classList.remove("open"));
 $("#dbModal").addEventListener("click",e=>{if(e.target.id==="dbModal")$("#dbModal").classList.remove("open");});
-$("#cfgSave").addEventListener("click",()=>{localStorage.setItem("hskf_url",$("#cfgUrl").value.trim());localStorage.setItem("hskf_key",$("#cfgKey").value.trim());location.reload();});
+$("#cfgSave").addEventListener("click",()=>{ if(!isAdmin)return; localStorage.setItem("hskf_url",$("#cfgUrl").value.trim());localStorage.setItem("hskf_key",$("#cfgKey").value.trim());location.reload();});
 
 let editingMemberId = null;
 $("#addMemberBtn").addEventListener("click",()=>{
