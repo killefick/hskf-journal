@@ -1293,7 +1293,7 @@ async function doLogin(){
     isAdmin=true;
     $("#logView").classList.remove("hide"); $("#adminBtn").classList.remove("hide");
     showBanner("warn",`<b>Lokalt läge.</b> Sparas bara i denna webbläsare. Koppla Supabase (Admin → ⚙ Databas eller CONFIG) för delad journal med inloggning.`);
-    await loadAll(); renderAll(); $("#q-skytt").focus();
+    await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
     return;
   }
   // Delat läge – kräver inloggning
