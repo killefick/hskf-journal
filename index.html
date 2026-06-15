@@ -224,7 +224,7 @@
       <div class="card-head"><h2>Registrera skytt</h2></div>
       <div class="card-body">
         <div class="quick">
-          <div class="field"><label for="q-skytt">Namn</label><input type="text" id="q-skytt" placeholder="För- och efternamn" autocomplete="off"></div>
+          <div class="field"><label for="q-skytt">Namn</label><div id="q-skytt-wrap"></div></div>
           <div class="field"><label for="q-skott">Antal skott</label><input type="number" id="q-skott" min="0" step="1" inputmode="numeric" enterkeyhint="next" placeholder="0"></div>
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
@@ -813,6 +813,17 @@ function renderTotals(){
 }
 /* ---------- shared ---------- */
 function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"))renderAdmin(); }
+// Admin/leader picks any member; a regular member is locked to themselves.
+function renderSkyttPicker(){
+  const wrap=$("#q-skytt-wrap"); if(!wrap) return;
+  if(isAdmin){
+    wrap.innerHTML=`<select id="q-skytt"><option value="">Välj skytt…</option>`+
+      directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+
+      `</select>`;
+  } else {
+    wrap.innerHTML=`<div id="q-skytt" class="datum-fast" data-id="${esc(_uid||"")}">${esc(nameOf(_uid))}</div>`;
+  }
+}
 
 /* ---------- quick add ---------- */
 async function quickAdd(){
@@ -820,14 +831,16 @@ async function quickAdd(){
     showBanner("warn","Ange <b>skjutledare</b> för dagens pass innan du registrerar skyttar – ansvarig krävs för en giltig journalpost.",4000);
     $("#p-ledare").focus(); return;
   }
-  const skytt=$("#q-skytt").value.trim(); const skott=$("#q-skott").value;
-  if(!skytt){ $("#q-skytt").focus(); return; }
+  const skyttEl=$("#q-skytt");
+  const skytt_id = isAdmin ? (skyttEl.value||"") : (skyttEl.dataset.id||"");
+  const skott=$("#q-skott").value;
+  if(!skytt_id){ if(isAdmin) skyttEl.focus(); showBanner("warn","Välj en skytt."); return; }
   if(skott===""||+skott<0){ $("#q-skott").focus(); return; }
   const moreOpen=!$("#moreFields").classList.contains("hide");
   const isComp=!!pass.tavling;
   const poangVal=$("#q-poang").value;
   const row={
-    datum:pass.datum||today(), skytt,
+    datum:pass.datum||today(), skytt_id,
     antal_skott:+skott, skjutledare:(moreOpen&&$("#q-ledare").value.trim())||pass.ledare,
     anmarkning:(moreOpen&&$("#q-anm").value.trim())||""
   };
@@ -843,8 +856,9 @@ async function quickAdd(){
     if(REMOTE){ await loadAll(); } else { entries.unshift(saved); }
     renderAll();
     // reset for next shooter
-    $("#q-skytt").value=""; $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value="";
-    $("#q-skytt").focus();
+    if(isAdmin){ const s=$("#q-skytt"); if(s) s.value=""; }
+    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value="";
+    (isAdmin ? $("#q-skytt") : $("#q-skott")).focus();
   }catch(err){
     const m=String(err&&err.message||err);
     if(/tavling|poang|kopt|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng/köpt). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
@@ -962,7 +976,7 @@ $("#p-tavling").addEventListener("change",e=>{pass.tavling=e.target.checked;save
 $("#p-tavlingnamn").addEventListener("change",e=>{pass.tavlingNamn=e.target.value;savePass();});
 $("#moreToggle").addEventListener("click",e=>{e.preventDefault();const m=$("#moreFields");m.classList.toggle("hide");if(!m.classList.contains("hide")){$("#q-ledare").value=pass.ledare;}});
 $("#q-add").addEventListener("click",quickAdd);
-$("#q-skytt").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#q-skott").focus();}});
+document.addEventListener("keydown",e=>{ if(e.target&&e.target.id==="q-skytt"&&e.key==="Enter"){ e.preventDefault(); $("#q-skott").focus(); } });
 $("#q-skott").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault(); if(pass.tavling){$("#q-poang").focus();} else {quickAdd();}}});
 $("#q-poang").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();quickAdd();}});
 
@@ -1248,8 +1262,8 @@ async function enterApp(session){
   $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
   if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
   applyPassToForm();
-  await loadDirectory(); await loadAll(); renderAll();
-  if(!isRevisor) $("#q-skytt").focus();
+  await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
+  if(!isRevisor){ const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
 }
 let _uid=undefined;
 function applyAuth(session){
