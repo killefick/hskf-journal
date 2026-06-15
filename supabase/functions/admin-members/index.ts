@@ -95,50 +95,12 @@ Deno.serve(async (req) => {
         if (emErr) throw emErr;
       }
 
-      // Fetch the current (old) name by id so we can propagate a rename.
-      const { data: oldProf, error: oldErr } = await admin
-        .from("profiles").select("full_name").eq("id", id).maybeSingle();
-      if (oldErr) throw oldErr;
-      const oldName = (oldProf?.full_name ?? "").trim();
-
+      // Names are referenced by id everywhere (journal + faktura resolve through
+      // member_directory), so a rename is a single profile update — no propagation.
       const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: newName });
       if (upErr) throw upErr;
 
-      // Propagate the rename (matched by exact old name) to journal entries and
-      // invoice records, so the member's history and faktura follow the new name.
-      let renamed = 0;
-      if (oldName && oldName !== newName) {
-        const { data: rows, error: jErr } = await admin
-          .from("skjuttillfallen").update({ skytt: newName }).eq("skytt", oldName).select("id");
-        if (jErr) throw jErr;
-        renamed = rows?.length ?? 0;
-
-        // Rename the invoice record too. skytt_namn is the primary key, so a blind
-        // update would collide if a row already exists under the new name — merge
-        // instead (keep a non-empty email, keep the later faktura_skickad), then
-        // drop the old row.
-        const { data: oldFak, error: ofErr } = await admin
-          .from("skytt_faktura").select("email, faktura_skickad").eq("skytt_namn", oldName).maybeSingle();
-        if (ofErr) throw ofErr;
-        if (oldFak) {
-          const { data: newFak, error: nfErr } = await admin
-            .from("skytt_faktura").select("email, faktura_skickad").eq("skytt_namn", newName).maybeSingle();
-          if (nfErr) throw nfErr;
-          const later = (a: string | null, b: string | null) =>
-            !a ? (b ?? null) : !b ? a : (new Date(a).getTime() >= new Date(b).getTime() ? a : b);
-          const merged = {
-            skytt_namn: newName,
-            email: oldFak.email || newFak?.email || null,
-            faktura_skickad: later(oldFak.faktura_skickad ?? null, newFak?.faktura_skickad ?? null),
-          };
-          const { error: upFErr } = await admin.from("skytt_faktura").upsert(merged);
-          if (upFErr) throw upFErr;
-          const { error: delFErr } = await admin.from("skytt_faktura").delete().eq("skytt_namn", oldName);
-          if (delFErr) throw delFErr;
-        }
-      }
-
-      return json({ ok: true, data: { id, email, full_name: newName, renamed } });
+      return json({ ok: true, data: { id, email, full_name: newName } });
     }
 
     if (action === "delete") {
