@@ -534,7 +534,7 @@ function renderLog(){
   rows.forEach(e=>{
     ptot+=(+e.antal_skott||0);
     const li=document.createElement("li");
-    li.innerHTML=`<span class="nm">${esc(e.skytt)}</span>
+    li.innerHTML=`<span class="nm">${esc(nameOf(e.skytt_id))}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
       ${e.kopt?`<span class="pill medlem">Köpt</span>`:""}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
@@ -610,7 +610,7 @@ function renderAdmin(){
   const ye=entriesForYear(y);
   const tot=ye.reduce((s,e)=>s+(+e.antal_skott||0),0);
   const days=new Set(ye.map(e=>e.datum)).size;
-  const shooters=new Set(ye.map(e=>(e.skytt||"").trim().toLowerCase()).filter(Boolean));
+  const shooters=new Set(ye.map(e=>e.skytt_id).filter(Boolean));
   const costTot=ye.reduce((s,e)=>s+rowOutstanding(e),0);
   $("#s-total").textContent=fmt(tot);
   $("#s-days").textContent=fmt(days);
@@ -623,7 +623,7 @@ function renderAdmin(){
   $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#1668b0");
   // per shooter
   const map={};
-  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e);});
+  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e);});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
@@ -638,7 +638,7 @@ function renderAdmin(){
       : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}">Skicka faktura</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
-    return `<tr><td>${esc(n)}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td style="text-align:right;white-space:nowrap">${act}</td></tr>`;
+    return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td style="text-align:right;white-space:nowrap">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices&&REMOTE&&list.some(([,v])=>v.out>0)));
   $("#priceHint").textContent = hasPrices
@@ -652,13 +652,13 @@ function renderAdminTable(){
   const y=$("#a-year").value||currentYearStr();
   const q=$("#search").value.trim().toLowerCase();
   let rows=entriesForYear(y);
-  if(q)rows=rows.filter(e=>`${e.skytt} ${e.skjutledare} ${e.anmarkning} ${e.tavling_namn||""}`.toLowerCase().includes(q));
+  if(q)rows=rows.filter(e=>`${nameOf(e.skytt_id)} ${e.skjutledare} ${e.anmarkning} ${e.tavling_namn||""}`.toLowerCase().includes(q));
   rows.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
   $("#rowCount").textContent=`(${rows.length})`;
   $("#adminEmpty").classList.toggle("hide",rows.length>0);
   $("#adminTbody").innerHTML=rows.map(e=>{
     return `<tr>
-      <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td>
+      <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(nameOf(e.skytt_id))}</td>
       <td class="num">${fmt(e.antal_skott)}</td>
       <td>${e.kopt?"Ja":"–"}</td>
       <td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td>
@@ -773,19 +773,19 @@ function compTotals(rows){
     const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;
     if(p==null) continue;
     if(!byComp.has(name)) byComp.set(name,[]);
-    byComp.get(name).push({skytt:(e.skytt||"–").trim(), p});
+    byComp.get(name).push({id:e.skytt_id, p});
   }
   const agg=new Map();
   for(const list of byComp.values()){
     const maxP=Math.max(...list.map(r=>r.p));
     for(const r of list){
-      if(!agg.has(r.skytt)) agg.set(r.skytt,{total:0,tavlingar:0,segrar:0});
-      const a=agg.get(r.skytt);
+      if(!agg.has(r.id)) agg.set(r.id,{total:0,tavlingar:0,segrar:0});
+      const a=agg.get(r.id);
       a.total+=r.p; a.tavlingar+=1; if(r.p===maxP) a.segrar+=1;
     }
   }
-  return [...agg.entries()].map(([skytt,a])=>({skytt,...a}))
-    .sort((x,y)=>(y.total-x.total)||(y.segrar-x.segrar)||x.skytt.localeCompare(y.skytt,"sv"));
+  return [...agg.entries()].map(([id,a])=>({id,...a}))
+    .sort((x,y)=>(y.total-x.total)||(y.segrar-x.segrar)||nameOf(x.id).localeCompare(nameOf(y.id),"sv"));
 }
 function renderComp(){
   const y=$("#a-year").value||currentYearStr();
@@ -799,7 +799,7 @@ function renderComp(){
     return `<div class="comp-group"><h3>${esc(name)} <span class="hint">(${list.length})</span></h3>`+
     `<div class="tbl-scroll"><table>`+
     `<thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Poäng</th></tr></thead>`+
-    `<tbody>${list.map(e=>{const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;const win=!isOvning&&p!=null&&p===maxP;return `<tr${win?' class="comp-win"':''}><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(e.skytt)}</td><td class="num">${p!=null?fmt(p):""}</td></tr>`;}).join("")}</tbody>`+
+    `<tbody>${list.map(e=>{const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;const win=!isOvning&&p!=null&&p===maxP;return `<tr${win?' class="comp-win"':''}><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(nameOf(e.skytt_id))}</td><td class="num">${p!=null?fmt(p):""}</td></tr>`;}).join("")}</tbody>`+
     `</table></div></div>`;
   }).join("");
 }
@@ -809,7 +809,7 @@ function renderTotals(){
   const t=compTotals(entriesForYear(y));
   $("#totalsCount").textContent=t.length?`(${t.length})`:"";
   $("#totalsEmpty").style.display=t.length?"none":"block";
-  $("#totalsTbody").innerHTML=t.map((r,i)=>`<tr><td class="num" style="text-align:left">${i+1}</td><td>${esc(r.skytt)}</td><td class="num">${r.segrar}</td><td class="num">${r.tavlingar}</td><td class="num">${fmt(r.total)}</td></tr>`).join("");
+  $("#totalsTbody").innerHTML=t.map((r,i)=>`<tr><td class="num" style="text-align:left">${i+1}</td><td>${esc(nameOf(r.id))}</td><td class="num">${r.segrar}</td><td class="num">${r.tavlingar}</td><td class="num">${fmt(r.total)}</td></tr>`).join("");
 }
 /* ---------- shared ---------- */
 function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"))renderAdmin(); }
@@ -885,7 +885,7 @@ function exportHeaderRows(y){
 function summaryRows(ye,y){
   const tot=ye.reduce((s,e)=>s+(+e.antal_skott||0),0);
   const days=new Set(ye.map(e=>e.datum)).size;
-  const shooters=new Set(ye.map(e=>(e.skytt||"").trim().toLowerCase()).filter(Boolean)).size;
+  const shooters=new Set(ye.map(e=>e.skytt_id).filter(Boolean)).size;
   const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
   const msum=Array(12).fill(0); ye.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1;if(m>=0)msum[m]+=(+e.antal_skott||0);});
   const r=[[],["SAMMANSTÄLLNING "+y],
@@ -902,18 +902,18 @@ function summaryRows(ye,y){
 function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Betald","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
-    .map(e=>[e.datum,e.skytt,+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
+    .map(e=>[e.datum,nameOf(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
 }
 function payRows(ye){
   const map={};
-  ye.forEach(e=>{const k=(e.skytt||"–").trim(); if(!map[k])map[k]={kopta:0,out:0,paid:0}; map[k].kopta+=koptaSkott(e); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e);});
-  return Object.entries(map).filter(([,v])=>v.kopta>0).sort((a,b)=>a[0].localeCompare(b[0],"sv"))
-    .map(([n,v])=>[n,v.kopta,Math.round(v.out*100)/100,Math.round(v.paid*100)/100]);
+  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={kopta:0,out:0,paid:0}; map[k].kopta+=koptaSkott(e); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e);});
+  return Object.entries(map).filter(([,v])=>v.kopta>0).sort((a,b)=>nameOf(a[0]).localeCompare(nameOf(b[0]),"sv"))
+    .map(([n,v])=>[nameOf(n),v.kopta,Math.round(v.out*100)/100,Math.round(v.paid*100)/100]);
 }
 function compResultRows(ye){
   return ye.filter(e=>e.tavling||(e.poang!=null&&e.poang!==""))
     .slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||((+b.poang||0)-(+a.poang||0)))
-    .map(e=>[e.datum,e.tavling_namn||"",e.skytt,(e.poang!=null&&e.poang!=="")?+e.poang:""]);
+    .map(e=>[e.datum,e.tavling_namn||"",nameOf(e.skytt_id),(e.poang!=null&&e.poang!=="")?+e.poang:""]);
 }
 $("#exportCsv").addEventListener("click",()=>{
   const y=$("#a-year").value; const ye=entriesForYear(y);
