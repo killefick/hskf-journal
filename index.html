@@ -1102,9 +1102,9 @@ function openEdit(e){
     : '<div id="e-datum" class="datum-fast"></div>';
   if(isAdmin) $("#e-datum").value=e.datum||""; else $("#e-datum").textContent=e.datum||"";
   $("#e-skytt-wrap").innerHTML = isAdmin
-    ? '<input type="text" id="e-skytt" autocomplete="off">'
+    ? `<select id="e-skytt">`+directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+`</select>`
     : '<div id="e-skytt" class="datum-fast"></div>';
-  if(isAdmin) $("#e-skytt").value=e.skytt||""; else $("#e-skytt").textContent=e.skytt||"";
+  if(isAdmin) $("#e-skytt").value=e.skytt_id||""; else $("#e-skytt").textContent=nameOf(e.skytt_id);
   $("#e-skott").value=e.antal_skott||"";
   $("#e-kopt").checked=!!e.kopt;
   $("#e-poang").value=(e.poang!=null?e.poang:"");
@@ -1122,9 +1122,9 @@ $("#e-save").addEventListener("click",async()=>{
     const d=$("#e-datum").value.trim();
     if(!validDate(d)){ alert("Ange datum som ÅÅÅÅ-MM-DD."); return; }
     row.datum=d;
-    const namn=$("#e-skytt").value.trim();
-    if(!namn){ alert("Ange ett namn."); return; }
-    row.skytt=namn;
+    const sid=$("#e-skytt").value;
+    if(!sid){ alert("Välj en skytt."); return; }
+    row.skytt_id=sid;
   }
   const pv=$("#e-poang").value, tn=$("#e-tavlingnamn").value.trim();
   if(editWasComp||pv!==""||tn){
