@@ -191,3 +191,25 @@ grant select on public.member_directory to authenticated;
 
 A member rename is now just `update public.profiles set full_name = … where id = …`;
 no journal/invoice propagation is needed.
+
+## 9. Deactivate / reactivate member (2026-06-15)
+
+Adds a reversible active/inactive flag on members. Deactivation also bans the
+auth login (done in the `admin-members` function, not here). Run in the SQL editor:
+
+```sql
+alter table public.profiles
+  add column if not exists active boolean not null default true;
+
+-- member_directory must expose `active` so the client can filter the logging
+-- picker to active members while still resolving names for inactive ones.
+drop view if exists public.member_directory;
+create view public.member_directory
+  with (security_invoker = off) as
+  select id, full_name, active from public.profiles;
+
+grant select on public.member_directory to authenticated;
+```
+
+No backfill — existing members default to `active = true`. Redeploy
+`admin-members` after (it gains `deactivate`/`reactivate`).
