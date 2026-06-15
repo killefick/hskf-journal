@@ -213,3 +213,10 @@ grant select on public.member_directory to authenticated;
 
 No backfill — existing members default to `active = true`. Redeploy
 `admin-members` after (it gains `deactivate`/`reactivate`).
+
+## 10. Backup/restore — send-invoice `restore` action (2026-06-15)
+
+`send-invoice` gained a `restore` action (admin-gated) that bulk-upserts
+`skytt_faktura` rows from a backup file, skipping any whose `skytt_id` no longer
+exists in `profiles`. No SQL change — just redeploy the function. The journal
+half of restore runs client-side via the admin's existing RLS.
