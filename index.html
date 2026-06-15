@@ -97,6 +97,7 @@
   .admin-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .admin-tabs{margin-bottom:16px;max-width:100%;overflow-x:auto}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .seg.admin-tabs{overflow-x:auto;overflow-y:hidden}
   .seg button{font:inherit;font-weight:600;border:none;background:transparent;padding:12px 16px;cursor:pointer;color:var(--ink-soft)}
   .seg button.on{background:var(--forest);color:#f3ecdd}
 
@@ -137,6 +138,7 @@
   tbody tr:hover{background:#f3f8fd}
   td.num{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
   .row-actions{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap}
+  .act-cell{text-align:right;white-space:nowrap}
   .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .empty{padding:38px 20px;text-align:center;color:var(--ink-soft)}
   .empty .big{font-family:"Fraunces",serif;font-size:20px;color:var(--ink);margin-bottom:4px}
@@ -153,13 +155,31 @@
 
   .modal-bg{position:fixed;inset:0;background:rgba(35,39,28,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
   .modal-bg.open{display:flex}
-  .modal{background:var(--card);border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);overflow:hidden}
+  .modal{background:var(--card);border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);overflow:hidden;max-height:calc(100dvh - 36px);display:flex;flex-direction:column}
   .modal h3{font-family:"Fraunces",serif;margin:0;font-size:20px}
   .modal .m-head{padding:18px 22px;border-bottom:1px solid var(--line-2)}
-  .modal .m-body{padding:18px 22px;display:flex;flex-direction:column;gap:13px}
+  .modal .m-body{padding:18px 22px;display:flex;flex-direction:column;gap:13px;overflow-y:auto;min-height:0}
   .modal .m-foot{padding:14px 22px;border-top:1px solid var(--line-2);display:flex;justify-content:flex-end;gap:10px}
   .modal p.hint{font-size:12.5px;color:var(--ink-soft);margin:0}
   .chart svg{width:100%;height:auto;display:block}
+  /* ---- mobile polish (phone screens) ---- */
+  @media(max-width:680px){
+    .btn.tiny{padding:9px 12px}
+    .slist .x{padding:9px 13px;font-size:15px;line-height:1}
+    .icon-btn{padding:11px 14px}
+    .quick .qadd label{display:none}
+  }
+  @media(max-width:560px){
+    .act-cell{white-space:normal}
+  }
+  @media(max-width:480px){
+    .chart{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .chart svg{width:auto;height:150px}
+  }
+  @media(max-width:400px){
+    .stat .v{font-size:24px}
+    .stat .v small{font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -649,7 +669,7 @@ function renderAdmin(){
       : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}">Skicka faktura</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
-    return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td style="text-align:right;white-space:nowrap">${act}</td></tr>`;
+    return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices&&REMOTE&&list.some(([,v])=>v.out>0)));
   $("#priceHint").textContent = hasPrices
@@ -710,7 +730,7 @@ function renderMembers(){
       <td>${esc(m.full_name)}</td>
       <td>${esc(m.email)}</td>
       <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span>${m.active===false?` <span class="pill inaktiv">Inaktiv</span>`:""}</td>
-      <td style="white-space:nowrap;text-align:right">
+      <td class="act-cell">
         ${sel}
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}">✎ Redigera</button>
         <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
