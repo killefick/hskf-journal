@@ -45,27 +45,27 @@ Deno.serve(async (req) => {
   try {
     if (action === "meta") {
       const { data, error } = await admin
-        .from("skytt_faktura").select("skytt_namn, email, faktura_skickad");
+        .from("skytt_faktura").select("skytt_id, email, faktura_skickad");
       if (error) throw error;
       return json({ ok: true, data: data ?? [] });
     }
 
     if (action === "saveEmail") {
-      const skytt_namn = (payload.skytt_namn ?? "").trim();
+      const skytt_id = (payload.skytt_id ?? "").trim();
       const email = (payload.email ?? "").trim();
-      if (!skytt_namn) return json({ ok: false, error: "Namn saknas" }, 400);
+      if (!skytt_id) return json({ ok: false, error: "Skytt saknas" }, 400);
       if (!isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
-      const { error } = await admin.from("skytt_faktura").upsert({ skytt_namn, email });
+      const { error } = await admin.from("skytt_faktura").upsert({ skytt_id, email });
       if (error) throw error;
-      return json({ ok: true, data: { skytt_namn, email } });
+      return json({ ok: true, data: { skytt_id, email } });
     }
 
     if (action === "send") {
-      const skytt_namn = (payload.skytt_namn ?? "").trim();
+      const skytt_id = (payload.skytt_id ?? "").trim();
       const email = (payload.email ?? "").trim();
       const subject = payload.subject ?? "";
       const text = payload.text ?? "";
-      if (!skytt_namn) return json({ ok: false, error: "Namn saknas" }, 400);
+      if (!skytt_id) return json({ ok: false, error: "Skytt saknas" }, 400);
       if (!isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
       if (!BREVO_API_KEY) return json({ ok: false, error: "BREVO_API_KEY saknas" }, 500);
       if (!isEmail(BREVO_SENDER_EMAIL)) return json({ ok: false, error: "BREVO_SENDER_EMAIL saknas/ogiltig" }, 500);
@@ -85,9 +85,9 @@ Deno.serve(async (req) => {
         return json({ ok: false, error: "Brevo " + resp.status + ": " + detail }, 502);
       }
       const { error } = await admin.from("skytt_faktura")
-        .upsert({ skytt_namn, email, faktura_skickad: new Date().toISOString() });
+        .upsert({ skytt_id, email, faktura_skickad: new Date().toISOString() });
       if (error) throw error;
-      return json({ ok: true, data: { skytt_namn, email } });
+      return json({ ok: true, data: { skytt_id, email } });
     }
 
     return json({ ok: false, error: "Okänd action" }, 400);
