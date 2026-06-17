@@ -114,15 +114,55 @@ insert into public.profiles (id, full_name, role)
 
 alter table skjuttillfallen enable row level security;
 create policy "read"   on skjuttillfallen for select to authenticated using (true);
-create policy "insert" on skjuttillfallen for insert to authenticated with check (true);
+create policy "insert" on skjuttillfallen for insert to authenticated
+  with check (public.is_admin() or created_by = auth.uid());
 create policy "update" on skjuttillfallen for update to authenticated
   using (created_by = auth.uid() or public.is_admin())
   with check (created_by = auth.uid() or public.is_admin());
 create policy "delete" on skjuttillfallen for delete to authenticated
   using (created_by = auth.uid() or public.is_admin());
+
+-- Column-level guard. RLS is row-level only, so without this a member could call
+-- the REST API directly and flip billing/attribution fields on their OWN rows
+-- (e.g. set betald=true to erase ammunition debt, or change skytt_id). This
+-- trigger keeps betald/kopt/skytt_id admin-only while still letting a member log
+-- and correct their own entries.
+create or replace function public.guard_skjut_write() returns trigger
+  language plpgsql security definer set search_path = public as $$
+  begin
+    if public.is_admin() then return new; end if;
+    if (tg_op = 'INSERT') then
+      if new.created_by is distinct from auth.uid()
+        then raise exception 'created_by must be the current user'; end if;
+      if new.skytt_id is distinct from auth.uid()
+        then raise exception 'members can only log their own shots'; end if;
+      if coalesce(new.betald, false) <> false
+        then raise exception 'only an admin can mark an entry as paid'; end if;
+      return new;
+    end if;
+    if (tg_op = 'UPDATE') then
+      if new.skytt_id is distinct from old.skytt_id
+        then raise exception 'only an admin can change the shooter'; end if;
+      if coalesce(new.kopt,false) is distinct from coalesce(old.kopt,false)
+        then raise exception 'only an admin can change purchased-ammo status'; end if;
+      if coalesce(new.betald,false) is distinct from coalesce(old.betald,false)
+        then raise exception 'only an admin can change paid status'; end if;
+      return new;
+    end if;
+    return new;
+  end; $$;
+drop trigger if exists guard_skjut_write on skjuttillfallen;
+create trigger guard_skjut_write
+  before insert or update on skjuttillfallen
+  for each row execute function public.guard_skjut_write();
 ```
 
-3. Authentication → Providers: slå på **Email**. Slå **av** "Allow new users to sign up".
+3. Authentication → Providers: slå på **Email**. Slå **av** "Allow new users to
+   sign up" — **detta är obligatoriskt**. Appen har ingen självregistrering: nya
+   medlemmar skapas bara av en admin (Medlemmar → Lägg till medlem), som mejlar en
+   inbjudan; medlemmen sätter sitt lösenord via länken innan hen kan logga in. Är
+   självregistrering på kan vem som helst skapa ett konto och då läsa hela
+   journalen (read-policyn är `using (true)`). Se `docs/supabase-setup.md` steg 11.
 4. Skapa det första kontot (Authentication → Users → Add user) och gör det till admin –
    resten av medlemmarna läggs till i appen under **Medlemmar**:
 

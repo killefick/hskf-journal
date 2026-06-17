@@ -52,7 +52,8 @@ policies so a revisor can never insert, update, or delete:
 -- (uses the profiles table; coalesce so a missing row is treated as non-revisor)
 drop policy if exists "insert" on skjuttillfallen;
 create policy "insert" on skjuttillfallen for insert to authenticated
-  with check (coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
+  with check ((public.is_admin() or created_by = auth.uid())
+         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
 
 drop policy if exists "update" on skjuttillfallen;
 create policy "update" on skjuttillfallen for update to authenticated
@@ -272,3 +273,66 @@ No backfill — existing members default to `active = true`. Redeploy
 `skytt_faktura` rows from a backup file, skipping any whose `skytt_id` no longer
 exists in `profiles`. No SQL change — just redeploy the function. The journal
 half of restore runs client-side via the admin's existing RLS.
+
+## 11. Disable self-registration (REQUIRED)
+
+The app never calls `signUp` — new members are created **only** by an admin
+(Medlemmar → Lägg till medlem → invite email), and the invitee sets a password
+via the reset link before they can log in. The whole role model assumes nobody
+can self-register. Verify it stays off:
+
+Authentication → **Providers → Email → "Allow new users to sign up" = OFF**.
+
+If this is ever enabled, anyone on the internet can create an `authenticated`
+account; the `read` policy on `skjuttillfallen` (`using (true)`) would then expose
+the entire journal to them. Keep it off.
+
+## 12. Harden journal write policies (2026-06-17)
+
+Brings an existing database up to the secure base in the README. Without this, a
+member can call the REST API directly with the public anon key + their own token
+and (a) insert journal rows attributed to other members, and (b) flip
+`betald`/`kopt` on their own rows to erase ammunition debt — RLS is row-level and
+can't restrict columns. Run in the SQL editor:
+
+```sql
+-- (a) Tighten insert so a member can only create rows for themselves.
+--     If you ran step 4 (revisor), use that variant instead of this one.
+drop policy if exists "insert" on skjuttillfallen;
+create policy "insert" on skjuttillfallen for insert to authenticated
+  with check (public.is_admin() or created_by = auth.uid());
+
+-- (b) Column-level guard: betald/kopt/skytt_id are admin-only to change.
+create or replace function public.guard_skjut_write() returns trigger
+  language plpgsql security definer set search_path = public as $$
+  begin
+    if public.is_admin() then return new; end if;
+    if (tg_op = 'INSERT') then
+      if new.created_by is distinct from auth.uid()
+        then raise exception 'created_by must be the current user'; end if;
+      if new.skytt_id is distinct from auth.uid()
+        then raise exception 'members can only log their own shots'; end if;
+      if coalesce(new.betald, false) <> false
+        then raise exception 'only an admin can mark an entry as paid'; end if;
+      return new;
+    end if;
+    if (tg_op = 'UPDATE') then
+      if new.skytt_id is distinct from old.skytt_id
+        then raise exception 'only an admin can change the shooter'; end if;
+      if coalesce(new.kopt,false) is distinct from coalesce(old.kopt,false)
+        then raise exception 'only an admin can change purchased-ammo status'; end if;
+      if coalesce(new.betald,false) is distinct from coalesce(old.betald,false)
+        then raise exception 'only an admin can change paid status'; end if;
+      return new;
+    end if;
+    return new;
+  end; $$;
+drop trigger if exists guard_skjut_write on skjuttillfallen;
+create trigger guard_skjut_write
+  before insert or update on skjuttillfallen
+  for each row execute function public.guard_skjut_write();
+```
+
+> **Note on admin inserts for other shooters.** When an admin logs shots for
+> another member, `created_by` defaults to the admin's uid while `skytt_id` is the
+> other member — allowed because `public.is_admin()` short-circuits the guard.

@@ -77,6 +77,20 @@ Deno.serve(async (req) => {
       const { id, role } = payload;
       if (!id) return json({ ok: false, error: "id saknas" }, 400);
       if (!VALID_ROLES.has(role)) return json({ ok: false, error: "Ogiltig roll" }, 400);
+      // Don't let an admin demote their own account — guards against locking the
+      // org out of admin (and matches the deactivate/delete self-guards).
+      if (id === callerId && role !== "admin") {
+        return json({ ok: false, error: "Du kan inte ändra din egen roll" }, 400);
+      }
+      // Never remove the last remaining admin.
+      if (role !== "admin") {
+        const { data: admins, error: aErr } = await admin
+          .from("profiles").select("id").eq("role", "admin");
+        if (aErr) throw aErr;
+        if ((admins ?? []).length <= 1 && (admins ?? []).some((a: any) => a.id === id)) {
+          return json({ ok: false, error: "Minst en admin måste finnas kvar" }, 400);
+        }
+      }
       const { error } = await admin.from("profiles").upsert({ id, role });
       if (error) throw error;
       return json({ ok: true, data: { id, role } });

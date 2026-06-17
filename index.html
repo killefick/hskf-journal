@@ -2,6 +2,7 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Skjutjournal – Hillareds skytteförening</title>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -419,8 +420,12 @@
   </div>
 </div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.2"
+        integrity="sha384-JWEyvHh+lRf0sN/WWY+QTQwX+CyWqmNg4tkc8GQzAMEtR2wGNrCJlvnu1lHD1kDm"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 /* ============================================================
    CONFIG – med inloggning (Supabase Auth) och låst RLS är det tryggt att
@@ -470,7 +475,7 @@ let isRevisor = false;
 
 const $ = s => document.querySelector(s);
 const fmt = n => (Number(n)||0).toLocaleString("sv-SE");
-const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today = () => new Date().toISOString().slice(0,10);
 function validDate(s){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -1276,6 +1281,7 @@ $("#cfgSave").addEventListener("click",()=>{ if(!isAdmin)return; localStorage.se
 
 let editingMemberId = null;
 $("#addMemberBtn").addEventListener("click",()=>{
+  if(!isAdmin)return;
   editingMemberId=null;
   $("#memberModal").querySelector("h3").textContent="Lägg till medlem";
   $("#m-save").textContent="Skapa medlem";
@@ -1286,6 +1292,7 @@ $("#addMemberBtn").addEventListener("click",()=>{
 $("#m-cancel").addEventListener("click",()=>$("#memberModal").classList.remove("open"));
 $("#memberModal").addEventListener("click",e=>{if(e.target.id==="memberModal")$("#memberModal").classList.remove("open");});
 $("#m-save").addEventListener("click",async()=>{
+  if(!isAdmin)return;
   const email=$("#m-email").value.trim(), full_name=$("#m-name").value.trim();
   if(!email||!full_name){ $("#mErr").textContent="Fyll i e-post och namn."; return; }
   const btn=$("#m-save"), btnLabel=btn.textContent;
