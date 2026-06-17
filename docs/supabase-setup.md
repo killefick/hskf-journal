@@ -112,7 +112,28 @@ behåll variabeln `{{ .ConfirmationURL }}` som länk:
 Inbjudningslänken returnerar till samma adress som lösenordsåterställningen
 (redirect-URL från steg 3) — ingen ny URL behöver läggas till.
 
-### 6b. Egen SMTP (krävs)
+### 6b. Svensk mall för lösenordsåterställning
+
+Authentication -> Email Templates -> "Reset Password". Sätt ämne och brödtext,
+och behåll variabeln `{{ .ConfirmationURL }}` som länk:
+
+**Ämne:**
+
+    Återställ ditt lösenord – Hillareds skytteförening
+
+**Brödtext (HTML):**
+
+    <h2>Återställ ditt lösenord</h2>
+    <p>Vi fick en begäran om att återställa lösenordet till ditt konto i
+    Hillareds skytteförenings skjutjournal.</p>
+    <p>Klicka på länken nedan för att välja ett nytt lösenord:</p>
+    <p><a href="{{ .ConfirmationURL }}">Välj nytt lösenord</a></p>
+    <p>Om du inte begärde en återställning kan du bortse från det här mejlet –
+    ditt lösenord ändras inte.</p>
+
+Länken returnerar till samma adress som inbjudan (redirect-URL från steg 3).
+
+### 6c. Egen SMTP (krävs)
 
 Authentication -> SMTP Settings. Supabases inbyggda e-postavsändare levererar
 bara till några få projektmedlemmars adresser och är hårt hastighetsbegränsad,
