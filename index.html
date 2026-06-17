@@ -439,7 +439,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v51";
+const APP_VERSION = "v52";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -750,11 +750,11 @@ function renderMembers(){
     // Revisor sees the full list but no mutating controls — admin only.
     const actions = !isAdmin ? "" : `
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}">✎ Redigera</button>
-        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
+        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Återst. lösen</button>
         ${isMe?"":(m.active===false
-          ? `<button class="btn ghost tiny" data-react="${esc(m.id)}">↻ Återaktivera</button>`
-          : `<button class="btn ghost tiny" data-deact="${esc(m.id)}">⏸ Inaktivera</button>`)}
-        ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}`;
+          ? `<button class="btn ghost tiny" data-react="${esc(m.id)}" title="Återaktivera">↻</button>`
+          : `<button class="btn ghost tiny" data-deact="${esc(m.id)}" title="Inaktivera">⏸</button>`)}
+        ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}" title="Ta bort">🗑</button>`}`;
     return `<tr>
       <td>${esc(m.full_name)}</td>
       <td>${esc(m.email)}</td>
