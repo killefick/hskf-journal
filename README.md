@@ -29,9 +29,11 @@ Roll sätts i `profiles.role`, eller av en admin under **Admin & analys → Medl
 
 - `member`: loggar skott och läser journalen, rättar/raderar **egna** poster. Vid redigering
   är datum och skytt låsta så att ett pass inte råkar flyttas till fel dag.
-- `revisor`: läsbehörig granskare. Ser Admin & analys och kan exportera, men kan inte ändra,
-  radera, logga skott eller hantera medlemmar. För riktig läs-spärr på databasnivå, kör
-  revisor-policyn i `docs/supabase-setup.md`.
+- `revisor`: betrodd granskare/ledare. Kan logga skott för vem som helst (som admin) och ser
+  allt – inklusive medlemslistan och Admin & analys – samt exportera. Kan rätta/radera sina
+  egna nyss inmatade poster, men kan **inte** hantera medlemmar, redigera/radera andras
+  poster, markera betalt eller skicka fakturor. Begränsningarna gäller även på databasnivå
+  (RLS + `guard_skjut_write`), inte bara i gränssnittet.
 - `admin`: ändrar/raderar alla poster, ändrar datum vid redigering (ÅÅÅÅ-MM-DD), markerar
   skottpengar som betalda, hanterar medlemmar och når all analys.
 - Lokalt läge (ingen Supabase) saknar inloggning och räknas som admin – endast för test.
@@ -124,18 +126,25 @@ create policy "delete" on skjuttillfallen for delete to authenticated
 
 -- Column-level guard. RLS is row-level only, so without this a member could call
 -- the REST API directly and flip billing/attribution fields on their OWN rows
--- (e.g. set betald=true to erase ammunition debt, or change skytt_id). This
--- trigger keeps betald/kopt/skytt_id admin-only while still letting a member log
--- and correct their own entries.
+-- (e.g. set betald=true to erase ammunition debt, or change skytt_id).
+--   * admin   — unrestricted
+--   * revisor — may log (insert) for ANY shooter, like an admin, but may not
+--               mark paid, reassign a shooter, or change purchased-ammo status
+--   * member  — may only log for themselves, never pre-marked as paid
+-- All non-admins are blocked from changing betald/kopt/skytt_id on existing rows.
 create or replace function public.guard_skjut_write() returns trigger
   language plpgsql security definer set search_path = public as $$
+  declare caller_role text;
   begin
     if public.is_admin() then return new; end if;
+    select role into caller_role from public.profiles where id = auth.uid();
     if (tg_op = 'INSERT') then
-      if new.created_by is distinct from auth.uid()
-        then raise exception 'created_by must be the current user'; end if;
-      if new.skytt_id is distinct from auth.uid()
-        then raise exception 'members can only log their own shots'; end if;
+      if coalesce(caller_role,'member') <> 'revisor' then
+        if new.created_by is distinct from auth.uid()
+          then raise exception 'created_by must be the current user'; end if;
+        if new.skytt_id is distinct from auth.uid()
+          then raise exception 'members can only log their own shots'; end if;
+      end if;
       if coalesce(new.betald, false) <> false
         then raise exception 'only an admin can mark an entry as paid'; end if;
       return new;

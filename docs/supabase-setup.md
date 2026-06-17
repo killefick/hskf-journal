@@ -39,34 +39,18 @@ In Supabase: Authentication -> URL Configuration -> Redirect URLs, add:
 
 This is the page the password-reset email link returns to.
 
-## 4. Enforce the read-only `revisor` role in the database (recommended)
+## 4. The `revisor` role — trusted logger + auditor
 
-The app hides all editing for `revisor` users in the UI, but for a true audit
-role the database should also reject writes. The existing `update`/`delete`
-policies require `created_by = auth.uid()` or admin — which still lets a former
-member who became a revisor change their own old rows. Re-create all three write
-policies so a revisor can never insert, update, or delete:
-
-```sql
--- helper: is the caller a revisor?
--- (uses the profiles table; coalesce so a missing row is treated as non-revisor)
-drop policy if exists "insert" on skjuttillfallen;
-create policy "insert" on skjuttillfallen for insert to authenticated
-  with check ((public.is_admin() or created_by = auth.uid())
-         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
-
-drop policy if exists "update" on skjuttillfallen;
-create policy "update" on skjuttillfallen for update to authenticated
-  using ((created_by = auth.uid() or public.is_admin())
-         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor')
-  with check ((created_by = auth.uid() or public.is_admin())
-         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
-
-drop policy if exists "delete" on skjuttillfallen;
-create policy "delete" on skjuttillfallen for delete to authenticated
-  using ((created_by = auth.uid() or public.is_admin())
-         and coalesce((select role from public.profiles where id = auth.uid()), 'member') <> 'revisor');
-```
+> **Changed 2026-06-17.** `revisor` is no longer a write-blocked, read-only role.
+> A revisor can now **log shots for any shooter (like an admin)** and see
+> everything, but cannot manage members, edit/delete other people's posts, mark
+> paid, or send invoices. Those limits are enforced by the base RLS policies plus
+> the `guard_skjut_write` trigger (see README / step 12 / step 13) — no
+> revisor-specific write-block policy.
+>
+> **If you previously applied the old read-only-revisor policies from this step,
+> undo them by running step 13**, which restores the base policies and the
+> revisor-aware trigger.
 
 Assign the role from the app (Admin & analys -> Medlemmar -> role dropdown), or
 directly:
@@ -273,6 +257,65 @@ No backfill — existing members default to `active = true`. Redeploy
 `skytt_faktura` rows from a backup file, skipping any whose `skytt_id` no longer
 exists in `profiles`. No SQL change — just redeploy the function. The journal
 half of restore runs client-side via the admin's existing RLS.
+
+## 13. Let revisor log shots (2026-06-17)
+
+`revisor` becomes a trusted logger: it can insert journal rows for any shooter
+(like an admin) but still can't mark paid, reassign a shooter, or change
+purchased-ammo status. This restores the base write policies (undoing the old
+read-only-revisor policies from step 4 if you ran them) and replaces the guard
+trigger with a revisor-aware version. Run in the SQL editor:
+
+```sql
+-- Base write policies (member/admin; revisor passes insert via created_by = self).
+drop policy if exists "insert" on skjuttillfallen;
+create policy "insert" on skjuttillfallen for insert to authenticated
+  with check (public.is_admin() or created_by = auth.uid());
+
+drop policy if exists "update" on skjuttillfallen;
+create policy "update" on skjuttillfallen for update to authenticated
+  using (created_by = auth.uid() or public.is_admin())
+  with check (created_by = auth.uid() or public.is_admin());
+
+drop policy if exists "delete" on skjuttillfallen;
+create policy "delete" on skjuttillfallen for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+-- Revisor-aware column guard.
+create or replace function public.guard_skjut_write() returns trigger
+  language plpgsql security definer set search_path = public as $$
+  declare caller_role text;
+  begin
+    if public.is_admin() then return new; end if;
+    select role into caller_role from public.profiles where id = auth.uid();
+    if (tg_op = 'INSERT') then
+      if coalesce(caller_role,'member') <> 'revisor' then
+        if new.created_by is distinct from auth.uid()
+          then raise exception 'created_by must be the current user'; end if;
+        if new.skytt_id is distinct from auth.uid()
+          then raise exception 'members can only log their own shots'; end if;
+      end if;
+      if coalesce(new.betald, false) <> false
+        then raise exception 'only an admin can mark an entry as paid'; end if;
+      return new;
+    end if;
+    if (tg_op = 'UPDATE') then
+      if new.skytt_id is distinct from old.skytt_id
+        then raise exception 'only an admin can change the shooter'; end if;
+      if coalesce(new.kopt,false) is distinct from coalesce(old.kopt,false)
+        then raise exception 'only an admin can change purchased-ammo status'; end if;
+      if coalesce(new.betald,false) is distinct from coalesce(old.betald,false)
+        then raise exception 'only an admin can change paid status'; end if;
+      return new;
+    end if;
+    return new;
+  end; $$;
+-- trigger itself is unchanged from step 12; create only if missing:
+drop trigger if exists guard_skjut_write on skjuttillfallen;
+create trigger guard_skjut_write
+  before insert or update on skjuttillfallen
+  for each row execute function public.guard_skjut_write();
+```
 
 ## 11. Disable self-registration (REQUIRED)
 

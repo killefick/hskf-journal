@@ -573,7 +573,7 @@ function renderLog(){
     ptot+=(+e.antal_skott||0);
     // Only show delete on rows the user may actually delete (own rows, or admin).
     // Mirrors the RLS delete policy (created_by = auth.uid() or is_admin()).
-    const canDel = !isRevisor && (isAdmin || (e.created_by && e.created_by===_uid));
+    const canDel = isAdmin || (e.created_by && e.created_by===_uid);
     const li=document.createElement("li");
     li.innerHTML=`<span class="nm">${esc(nameOf(e.skytt_id))}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
@@ -882,7 +882,7 @@ function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"
 // Admin/leader picks any member; a regular member is locked to themselves.
 function renderSkyttPicker(){
   const wrap=$("#q-skytt-wrap"); if(!wrap) return;
-  if(isAdmin){
+  if(isAdmin||isRevisor){
     wrap.innerHTML=`<select id="q-skytt"><option value="">Välj skytt…</option>`+
       directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+
       `</select>`;
@@ -898,9 +898,10 @@ async function quickAdd(){
     $("#p-ledare").focus(); return;
   }
   const skyttEl=$("#q-skytt");
-  const skytt_id = isAdmin ? (skyttEl.value||"") : (skyttEl.dataset.id||"");
+  const canPickAny = isAdmin||isRevisor;
+  const skytt_id = canPickAny ? (skyttEl.value||"") : (skyttEl.dataset.id||"");
   const skott=$("#q-skott").value;
-  if(!skytt_id){ if(isAdmin) skyttEl.focus(); showBanner("warn","Välj en skytt."); return; }
+  if(!skytt_id){ if(canPickAny) skyttEl.focus(); showBanner("warn","Välj en skytt."); return; }
   if(skott===""||+skott<0){ $("#q-skott").focus(); return; }
   const moreOpen=!$("#moreFields").classList.contains("hide");
   const isComp=!!pass.tavling;
@@ -922,9 +923,9 @@ async function quickAdd(){
     if(REMOTE){ await loadAll(); } else { entries.unshift(saved); }
     renderAll();
     // reset for next shooter
-    if(isAdmin){ const s=$("#q-skytt"); if(s) s.value=""; }
+    if(canPickAny){ const s=$("#q-skytt"); if(s) s.value=""; }
     $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value="";
-    (isAdmin ? $("#q-skytt") : $("#q-skott")).focus();
+    (canPickAny ? $("#q-skytt") : $("#q-skott")).focus();
   }catch(err){
     const m=String(err&&err.message||err);
     if(/tavling|poang|kopt|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng/köpt). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
@@ -1102,7 +1103,6 @@ $("#q-poang").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefaul
 
 // session list delete (no PIN – fix typos in current pass)
 $("#sessionList").addEventListener("click",async e=>{
-  if(isRevisor)return;
   const x=e.target.closest("[data-del]"); if(!x)return;
   if(!confirm("Ta bort posten?"))return;
   if(await delRow(x.dataset.del)){ await loadAll(); renderAll(); }
@@ -1113,7 +1113,8 @@ $("#adminBtn").addEventListener("click",()=>{
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
   renderAdmin();
-  if(isAdmin && REMOTE){ loadMembers(); loadFakturaMeta(); }
+  if((isAdmin||isRevisor) && REMOTE){ loadMembers(); }
+  if(isAdmin && REMOTE){ loadFakturaMeta(); }
 });
 $("#logBtn").addEventListener("click",()=>{
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
@@ -1376,12 +1377,14 @@ async function enterApp(session){
   }
   const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
   $("#authView").classList.add("hide");
-  // revisor = läsbehörig granskare: landar i admin-vyn, ingen inmatning
-  $("#logView").classList.toggle("hide", isRevisor);
-  $("#adminView").classList.toggle("hide", !isRevisor);
-  $("#adminBtn").classList.toggle("hide", !isAdmin);   // bara admin kan växla till admin-vyn
-  $("#logBtn").classList.add("hide");                  // revisor får inte gå till inmatning
-  $("#tabBtnMembers").classList.toggle("hide", !(isAdmin||isRevisor)); // revisor: read-only member list
+  // Everyone lands in the logging view. Admin & revisor can also open Admin &
+  // analys. Revisor logs like an admin (any shooter) but can't manage members
+  // or edit/delete other people's posts.
+  $("#logView").classList.remove("hide");
+  $("#adminView").classList.add("hide");
+  $("#adminBtn").classList.toggle("hide", !(isAdmin||isRevisor));
+  $("#logBtn").classList.add("hide");
+  $("#tabBtnMembers").classList.toggle("hide", !(isAdmin||isRevisor)); // admin + revisor see member list
   $("#addMemberBtn").classList.toggle("hide", !isAdmin);
   $("#dbSettings").classList.toggle("hide", !isAdmin);
   $("#backupBtn").classList.toggle("hide", !isAdmin);
@@ -1391,8 +1394,7 @@ async function enterApp(session){
   if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
   applyPassToForm();
   await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
-  if(isRevisor && REMOTE){ loadMembers(); }  // revisor lands in admin view: load the read-only member list
-  if(!isRevisor){ const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
+  { const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
 }
 let _uid=undefined;
 function applyAuth(session){
