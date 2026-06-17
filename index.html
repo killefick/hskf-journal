@@ -575,7 +575,8 @@ function renderLog(){
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
     ul.appendChild(li);
   });
-  $("#passTotal").textContent=rows.length?`${fmt(ptot)} skott · ${rows.length} skyttar`:"";
+  const nShooters=new Set(rows.map(e=>e.skytt_id)).size;
+  $("#passTotal").textContent=rows.length?`${fmt(ptot)} skott · ${nShooters} ${nShooters===1?"skytt":"skyttar"}`:"";
 }
 
 /* ---------- ADMIN render ---------- */
