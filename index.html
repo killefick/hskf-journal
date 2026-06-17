@@ -7,7 +7,7 @@
 <title>Skjutjournal – Hillareds skytteförening</title>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f4c81">
+<meta name="theme-color" content="#155b9e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,8 +19,8 @@
 <style>
   :root{
     --paper:#e9f1f9; --card:#ffffff; --ink:#1d2733; --ink-soft:#5a6b7b;
-    --forest:#1668b0; --forest-d:#0f4c81; --rust:#b1542a; --rust-d:#8f3f1d;
-    --line:#cfddeb; --line-2:#e2ebf4; --good:#1668b0;
+    --forest:#2079cc; --forest-d:#155b9e; --rust:#b1542a; --rust-d:#8f3f1d;
+    --line:#cfddeb; --line-2:#e2ebf4; --good:#2079cc;
     --shadow:0 1px 2px rgba(15,40,70,.06),0 8px 24px -12px rgba(15,40,70,.30);
     --radius:14px;
   }
@@ -118,7 +118,7 @@
   .slist .x:hover{color:var(--rust-d);border-color:#e7c4ab;background:#fbecdf}
 
   .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;letter-spacing:.02em}
-  .pill.medlem{background:#dcebf8;color:#0f4c81}
+  .pill.medlem{background:#dcebf8;color:#155b9e}
   .pill.gast{background:#f6e3d5;color:#8f3f1d}
   .pill.revisor{background:#e6e2f3;color:#4b3f7a}
   .pill.inaktiv{background:#e4e2db;color:#6a6a5e}
@@ -146,7 +146,7 @@
 
   .banner{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:20px;border:1px solid}
   .banner.warn{background:#fbf1e3;border-color:#eccfa9;color:#7a4a16}
-  .banner.ok{background:#e3eef9;border-color:#bcd6ee;color:#0f4c81}
+  .banner.ok{background:#e3eef9;border-color:#bcd6ee;color:#155b9e}
   .banner .x{margin-left:auto;cursor:pointer;opacity:.6;font-weight:700;padding:0 4px}
   .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;margin-top:5px}
   .dot.warn{background:var(--rust)} .dot.ok{background:var(--good)}
@@ -663,7 +663,7 @@ function renderAdmin(){
   const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
   const msum=Array(12).fill(0);
   ye.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
-  $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#1668b0");
+  $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#2079cc");
   // per shooter
   const map={};
   ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e);});
