@@ -251,7 +251,7 @@
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
-        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras i slutet av året)</label>
+        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
         <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
           <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
@@ -439,7 +439,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v50";
+const APP_VERSION = "v51";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -1292,27 +1292,22 @@ function showBanner(type,msg,t){
 
 /* ---------- init ---------- */
 if("serviceWorker" in navigator){
-  let reloading=false;
-  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(reloading)return; reloading=true; location.reload(); });
+  // Tyst auto-uppdatering: en ny SW aktiveras direkt (skipWaiting i sw.js), tar
+  // över sidan och vi laddar om till senaste versionen automatiskt. Hoppa över
+  // allra första installationen (då fanns ingen controller att ersätta).
+  let refreshing=false;
+  const hadController=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(refreshing||!hadController) return; refreshing=true; location.reload();
+  });
   window.addEventListener("load", async ()=>{
     try{
       const reg=await navigator.serviceWorker.register("sw.js");
-      if(reg.waiting && navigator.serviceWorker.controller) showUpdate(reg);
-      reg.addEventListener("updatefound",()=>{
-        const nw=reg.installing; if(!nw)return;
-        nw.addEventListener("statechange",()=>{
-          if(nw.state==="installed" && navigator.serviceWorker.controller) showUpdate(reg);
-        });
-      });
-      // leta efter ny version när appen åter får fokus
+      reg.update().catch(()=>{});
+      // Leta efter ny version när appen åter får fokus.
       document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") reg.update().catch(()=>{}); });
     }catch(e){}
   });
-}
-function showUpdate(reg){
-  showBanner("ok",`<b>Uppdatering finns.</b> En ny version är redo. <a href="#" id="doUpdate" style="color:inherit;text-decoration:underline;font-weight:700">Uppdatera nu</a>`);
-  const a=document.getElementById("doUpdate");
-  if(a) a.addEventListener("click",ev=>{ ev.preventDefault(); a.textContent="Uppdaterar…"; if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); });
 }
 /* ---------- Auth (Supabase) ---------- */
 function showAuth(){

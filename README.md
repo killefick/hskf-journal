@@ -242,5 +242,7 @@ tävlingsnamn), årssammanställning, signaturblock och hänvisningar. Excel få
 
 ## Uppdatera installerade appar
 
-Höj `VERSION` i `sw.js` (t.ex. `v18` → `v19`) och pusha. Nästa gång appen öppnas visas
-"Uppdatering finns" med ett klick för att ladda om.
+Höj `VERSION` i `sw.js` **och** `APP_VERSION` i `index.html` (håll dem i synk; t.ex.
+`v50` → `v51`) och pusha. Nästa gång appen öppnas (eller får fokus) aktiveras den nya
+versionen automatiskt och sidan laddar om sig själv – ingen prompt. Versionen visas i
+sidfoten.
