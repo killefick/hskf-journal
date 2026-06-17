@@ -133,7 +133,38 @@ och behåll variabeln `{{ .ConfirmationURL }}` som länk:
 
 Länken returnerar till samma adress som inbjudan (redirect-URL från steg 3).
 
-### 6c. Egen SMTP (krävs)
+### 6c. Svensk mall för bekräftelse av registrering
+
+Authentication -> Email Templates -> "Confirm signup". Sätt ämne och brödtext,
+och behåll variabeln `{{ .ConfirmationURL }}` som länk:
+
+**Ämne:**
+
+    Bekräfta din e-postadress – Hillareds skytteförening
+
+**Brödtext (HTML):**
+
+    <h2>Bekräfta din e-postadress</h2>
+    <p>Följ länken nedan för att bekräfta den här e-postadressen och slutföra registreringen.</p>
+    <p><a href="{{ .ConfirmationURL }}">Bekräfta e-postadress</a></p>
+
+### 6d. Svensk mall för byte av e-postadress
+
+Authentication -> Email Templates -> "Change Email Address". Sätt ämne och
+brödtext, och behåll variablerna `{{ .ConfirmationURL }}` och `{{ .NewEmail }}`:
+
+**Ämne:**
+
+    Bekräfta din nya e-postadress – Hillareds skytteförening
+
+**Brödtext (HTML):**
+
+    <h2>Bekräfta din nya e-postadress</h2>
+    <p>Följ länken nedan för att bekräfta {{ .NewEmail }} som din nya e-postadress.</p>
+    <p><a href="{{ .ConfirmationURL }}">Bekräfta ny e-postadress</a></p>
+    <p>Om du inte begärde den här ändringen kan du bortse från det här mejlet.</p>
+
+### 6e. Egen SMTP (krävs)
 
 Authentication -> SMTP Settings. Supabases inbyggda e-postavsändare levererar
 bara till några få projektmedlemmars adresser och är hårt hastighetsbegränsad,
