@@ -733,34 +733,36 @@ function renderMembers(){
   $("#memberEmpty").classList.toggle("hide",members.length>0);
   $("#memberTbody").innerHTML=members.map(m=>{
     const isMe=m.id===_uid;
-    const sel=isMe?"":`<select class="role-sel" data-roleid="${esc(m.id)}">
+    const sel=(isMe||!isAdmin)?"":`<select class="role-sel" data-roleid="${esc(m.id)}">
           <option value="member"${m.role==="member"?" selected":""}>Medlem</option>
           <option value="revisor"${m.role==="revisor"?" selected":""}>Revisor</option>
           <option value="admin"${m.role==="admin"?" selected":""}>Admin</option>
         </select>`;
-    return `<tr>
-      <td>${esc(m.full_name)}</td>
-      <td>${esc(m.email)}</td>
-      <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span>${m.active===false?` <span class="pill inaktiv">Inaktiv</span>`:""}</td>
-      <td class="act-cell">
-        ${sel}
+    // Revisor sees the full list but no mutating controls — admin only.
+    const actions = !isAdmin ? "" : `
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}">✎ Redigera</button>
         <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Inloggningslänk</button>
         ${isMe?"":(m.active===false
           ? `<button class="btn ghost tiny" data-react="${esc(m.id)}">↻ Återaktivera</button>`
           : `<button class="btn ghost tiny" data-deact="${esc(m.id)}">⏸ Inaktivera</button>`)}
-        ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}
-      </td>
+        ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}">🗑 Ta bort</button>`}`;
+    return `<tr>
+      <td>${esc(m.full_name)}</td>
+      <td>${esc(m.email)}</td>
+      <td><span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span>${m.active===false?` <span class="pill inaktiv">Inaktiv</span>`:""}</td>
+      <td class="act-cell">${sel}${actions}</td>
     </tr>`;
   }).join("");
 }
 $("#memberTbody").addEventListener("change",async(ev)=>{
+  if(!isAdmin)return;
   const sel=ev.target.closest(".role-sel"); if(!sel) return;
   const r=await sb.functions.invoke("admin-members",{body:{action:"setRole",id:sel.dataset.roleid,role:sel.value}});
   if(r.error||!r.data?.ok){ showBanner("warn","Kunde inte ändra roll: "+esc((r.data&&r.data.error)||(r.error&&r.error.message)||"okänt fel")); }
   await loadMembers();
 });
 $("#memberTbody").addEventListener("click",async(ev)=>{
+  if(!isAdmin)return;
   const editBtn=ev.target.closest("[data-editm]");
   if(editBtn){
     editingMemberId=editBtn.dataset.editm;
@@ -1379,7 +1381,8 @@ async function enterApp(session){
   $("#adminView").classList.toggle("hide", !isRevisor);
   $("#adminBtn").classList.toggle("hide", !isAdmin);   // bara admin kan växla till admin-vyn
   $("#logBtn").classList.add("hide");                  // revisor får inte gå till inmatning
-  $("#tabBtnMembers").classList.toggle("hide", !isAdmin);
+  $("#tabBtnMembers").classList.toggle("hide", !(isAdmin||isRevisor)); // revisor: read-only member list
+  $("#addMemberBtn").classList.toggle("hide", !isAdmin);
   $("#dbSettings").classList.toggle("hide", !isAdmin);
   $("#backupBtn").classList.toggle("hide", !isAdmin);
   $("#restoreBtn").classList.toggle("hide", !isAdmin);
@@ -1388,6 +1391,7 @@ async function enterApp(session){
   if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
   applyPassToForm();
   await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
+  if(isRevisor && REMOTE){ loadMembers(); }  // revisor lands in admin view: load the read-only member list
   if(!isRevisor){ const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
 }
 let _uid=undefined;

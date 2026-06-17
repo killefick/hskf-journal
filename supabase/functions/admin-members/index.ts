@@ -33,12 +33,22 @@ Deno.serve(async (req) => {
   const { data: prof, error: profErr } = await admin
     .from("profiles").select("role").eq("id", callerId).maybeSingle();
   if (profErr) return json({ ok: false, error: "Role lookup failed: " + profErr.message }, 500);
-  if (!prof || prof.role !== "admin") return json({ ok: false, error: "Forbidden" }, 403);
+  const callerRole = prof?.role;
+  if (!prof || (callerRole !== "admin" && callerRole !== "revisor")) {
+    return json({ ok: false, error: "Forbidden" }, 403);
+  }
 
   // --- dispatch ---
   let payload: any;
   try { payload = await req.json(); } catch { return json({ ok: false, error: "Bad JSON" }, 400); }
   const action = payload?.action;
+
+  // Revisor = read-only auditor: may read the member list, but every mutating
+  // action stays admin-only. (There's one admin for a reason.)
+  const REVISOR_ALLOWED = new Set(["list"]);
+  if (callerRole !== "admin" && !REVISOR_ALLOWED.has(action)) {
+    return json({ ok: false, error: "Forbidden" }, 403);
+  }
 
   try {
     if (action === "list") {
