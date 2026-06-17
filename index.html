@@ -439,7 +439,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v52";
+const APP_VERSION = "v53";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -543,8 +543,13 @@ async function delRow(id){
 }
 
 /* ---------- pass settings (kom ihåg) ---------- */
-const pass = JSON.parse(localStorage.getItem("hskf_pass")||"null") || {datum:today(),ledare:"",tavling:false,tavlingNamn:""};
-function savePass(){ localStorage.setItem("hskf_pass", JSON.stringify(pass)); }
+// Pass-inställningar (datum/ledare/tävling) sparas i sessionStorage: de lever kvar
+// vid omladdning i samma flik men försvinner när fliken/appen stängs (ingen
+// långtidspersistens). Datum sätts ändå alltid till idag vid start (se init).
+// Rensa ev. gammalt värde som tidigare sparades i localStorage.
+localStorage.removeItem("hskf_pass");
+const pass = JSON.parse(sessionStorage.getItem("hskf_pass")||"null") || {datum:today(),ledare:"",tavling:false,tavlingNamn:""};
+function savePass(){ sessionStorage.setItem("hskf_pass", JSON.stringify(pass)); }
 function applyCompUI(){
   const on=!!pass.tavling;
   $("#compNameWrap").classList.toggle("hide",!on);
@@ -906,7 +911,7 @@ async function quickAdd(){
     renderAll();
     // reset for next shooter
     if(canPickAny){ const s=$("#q-skytt"); if(s) s.value=""; }
-    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value="";
+    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value=""; $("#q-kopt").checked=false;
     (canPickAny ? $("#q-skytt") : $("#q-skott")).focus();
   }catch(err){
     const m=String(err&&err.message||err);
