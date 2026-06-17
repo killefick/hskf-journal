@@ -571,12 +571,15 @@ function renderLog(){
   let ptot=0;
   rows.forEach(e=>{
     ptot+=(+e.antal_skott||0);
+    // Only show delete on rows the user may actually delete (own rows, or admin).
+    // Mirrors the RLS delete policy (created_by = auth.uid() or is_admin()).
+    const canDel = !isRevisor && (isAdmin || (e.created_by && e.created_by===_uid));
     const li=document.createElement("li");
     li.innerHTML=`<span class="nm">${esc(nameOf(e.skytt_id))}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
       ${e.kopt?`<span class="pill medlem">Köpt</span>`:""}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
-      <span class="x" data-del="${e.id}">✕</span>
+      ${canDel?`<span class="x" data-del="${e.id}">✕</span>`:""}
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
     ul.appendChild(li);
   });
