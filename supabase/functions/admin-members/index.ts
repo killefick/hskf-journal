@@ -154,9 +154,44 @@ Deno.serve(async (req) => {
       const { id } = payload;
       if (!id) return json({ ok: false, error: "id saknas" }, 400);
       if (id === callerId) return json({ ok: false, error: "Du kan inte ta bort ditt eget konto" }, 400);
+
+      // skytt_journal + faktura reference profiles(id) ON DELETE RESTRICT, so a
+      // hard delete of a member with history fails deep in the auth cascade with
+      // a cryptic error. Detect it first and let the client offer a force delete.
+      const [{ count: shots }, { count: invoices }] = await Promise.all([
+        admin.from("skjuttillfallen").select("*", { count: "exact", head: true }).eq("skytt_id", id),
+        admin.from("skytt_faktura").select("*", { count: "exact", head: true }).eq("skytt_id", id),
+      ]);
+      if ((shots ?? 0) > 0 || (invoices ?? 0) > 0) {
+        // 200 on purpose: a non-2xx reply nulls out r.data in supabase-js, hiding
+        // these fields from the client. Keep ok:false so it's still an error path.
+        return json({ ok: false, hasHistory: true, shots: shots ?? 0, invoices: invoices ?? 0,
+          error: `Medlemmen har ${shots ?? 0} skott och ${invoices ?? 0} fakturarader.` });
+      }
+
       const { error } = await admin.auth.admin.deleteUser(id);
       if (error) throw error;
-      await admin.from("profiles").delete().eq("id", id);
+      const { error: pErr } = await admin.from("profiles").delete().eq("id", id);
+      if (pErr) throw pErr;
+      return json({ ok: true, data: { id } });
+    }
+
+    if (action === "forceDelete") {
+      const { id } = payload;
+      if (!id) return json({ ok: false, error: "id saknas" }, 400);
+      if (id === callerId) return json({ ok: false, error: "Du kan inte ta bort ditt eget konto" }, 400);
+
+      // service_role bypasses RLS. Wipe the member's own shooting + invoice
+      // history first so the ON DELETE RESTRICT FKs no longer pin the profile,
+      // then remove the account (this cascades to the profiles row).
+      const { error: jErr } = await admin.from("skjuttillfallen").delete().eq("skytt_id", id);
+      if (jErr) throw jErr;
+      const { error: fErr } = await admin.from("skytt_faktura").delete().eq("skytt_id", id);
+      if (fErr) throw fErr;
+      const { error } = await admin.auth.admin.deleteUser(id);
+      if (error) throw error;
+      const { error: pErr } = await admin.from("profiles").delete().eq("id", id);
+      if (pErr) throw pErr;
       return json({ ok: true, data: { id } });
     }
 
