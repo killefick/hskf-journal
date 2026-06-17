@@ -76,7 +76,19 @@ Deno.serve(async (req) => {
         redirectTo,
         data: { full_name: full_name ?? "" },
       });
-      if (error) throw error;
+      if (error) {
+        // Re-inviting an already-registered address: turn Supabase's cryptic
+        // English error into a clear next step. 200/ok:false so it surfaces
+        // cleanly in the modal instead of as a 500.
+        const code = (error as any).code;
+        const status = (error as any).status;
+        const msg = (error.message || "").toLowerCase();
+        if (code === "email_exists" || status === 422 ||
+            msg.includes("already been registered") || msg.includes("already registered")) {
+          return json({ ok: false, error: "E-posten är redan registrerad. Använd ✉ Återst. lösen på medlemmens rad för att skicka en ny inloggningslänk." });
+        }
+        throw error;
+      }
       const id = invited.user.id;
       const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: full_name ?? "", role });
       if (upErr) throw upErr;
