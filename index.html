@@ -439,7 +439,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v55";
+const APP_VERSION = "v56";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -630,7 +630,7 @@ async function loadFakturaMeta(){
 
 // Bygger klartext-faktura för en skytt och ett år. Fakturerar endast kvarstående
 // (köpt & ej betald) skott, en rad per skjutdag.
-function buildInvoiceText(id, year){
+function buildInvoiceText(id, year, reminder){
   const name=nameOf(id);
   const byDate={};
   entriesForYear(year)
@@ -640,11 +640,16 @@ function buildInvoiceText(id, year){
   const totalSkott=dates.reduce((s,d)=>s+byDate[d],0);
   const totalKr=totalSkott*(+PRIS_PER_SKOTT||0);
   const lines=dates.map(d=>`  ${d}:    ${fmt(byDate[d])} skott`);
-  const subject=`Faktura ammunition – Hillareds skytteförening ${year}`;
+  const subject=reminder
+    ? `Påminnelse: Faktura ammunition – Hillareds skytteförening ${year}`
+    : `Faktura ammunition – Hillareds skytteförening ${year}`;
+  const intro=reminder
+    ? `Detta är en vänlig påminnelse om en obetald faktura för ammunition – Hillareds skytteförening ${year}.`
+    : `Faktura för ammunition – Hillareds skytteförening ${year}.`;
   const text=
 `Hej ${name},
 
-Faktura för ammunition – Hillareds skytteförening ${year}.
+${intro}
 
 Köpta skott:
 ${lines.join("\n")}
@@ -688,7 +693,7 @@ function renderAdmin(){
         + `</div>`
       : "";
     const act = !isAdmin||!hasPrices ? ""
-      : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}">Skicka faktura</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
+      : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${fm.faktura_skickad?` data-reminder="1"`:``}>${fm.faktura_skickad?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
     return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
@@ -1129,13 +1134,14 @@ async function setShooterPaid(id,year,paid){
   showBanner("ok",paid?`${name} markerad som betald (${year}).`:`Betald-markering ångrad för ${name} (${year}).`,4000);
 }
 // Skickar en faktura till en skytt. E-postadressen hämtas från medlemmens konto.
-async function sendFaktura(id, year){
+async function sendFaktura(id, year, reminder){
   const name=nameOf(id);
   const email=accountEmail(id);
+  const what=reminder?"påminnelse":"faktura";
   if(!email){ showBanner("warn",`${esc(name)} saknar e-post på sitt konto.`); return false; }
-  const {subject,text}=buildInvoiceText(id,year);
+  const {subject,text}=buildInvoiceText(id,year,reminder);
   const r=await sb.functions.invoke("send-invoice",{body:{action:"send",skytt_id:id,email,subject,text}});
-  if(r.error||!r.data?.ok){ showBanner("warn",`Kunde inte skicka faktura till ${esc(name)}: `+esc(await fnErr(r,"okänt fel"))); return false; }
+  if(r.error||!r.data?.ok){ showBanner("warn",`Kunde inte skicka ${what} till ${esc(name)}: `+esc(await fnErr(r,"okänt fel"))); return false; }
   fakturaMeta[id]={...(fakturaMeta[id]||{}),faktura_skickad:new Date().toISOString()};
   return true;
 }
@@ -1144,8 +1150,10 @@ $("#shooterTbody").addEventListener("click",async e=>{
   const p=e.target.closest("[data-paid]"), u=e.target.closest("[data-unpaid]");
   const f=e.target.closest("[data-faktura]");
   if(f){
-    if(confirm(`Skicka faktura till ${nameOf(f.dataset.faktura)}?`)){
-      if(await sendFaktura(f.dataset.faktura,f.dataset.y)) showBanner("ok",`Faktura skickad till ${esc(nameOf(f.dataset.faktura))}.`,4000);
+    const reminder=f.dataset.reminder==="1";
+    const what=reminder?"påminnelse":"faktura";
+    if(confirm(`Skicka ${what} till ${nameOf(f.dataset.faktura)}?`)){
+      if(await sendFaktura(f.dataset.faktura,f.dataset.y,reminder)) showBanner("ok",`${reminder?"Påminnelse":"Faktura"} skickad till ${esc(nameOf(f.dataset.faktura))}.`,4000);
       renderAdmin();
     }
   }
