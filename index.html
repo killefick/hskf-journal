@@ -293,7 +293,7 @@
           <div class="stat"><div class="label">Totalt antal skott</div><div class="v" id="s-total">0</div></div>
           <div class="stat"><div class="label">Skjutdagar</div><div class="v" id="s-days">0</div></div>
           <div class="stat"><div class="label">Aktiva skyttar</div><div class="v" id="s-shooters">0</div></div>
-          <div class="stat"><div class="label">Att betala totalt</div><div class="v" id="s-cost">0</div></div>
+          <div class="stat"><div class="label">Utestående belopp</div><div class="v" id="s-cost">0</div></div>
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
         <div style="margin-top:20px"><div class="label" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">Skott &amp; kostnad per skytt <button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button></div>
@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.77";
+const APP_VERSION = "v.78";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -968,7 +968,7 @@ function summaryRows(ye,y){
   const r=[[],["SAMMANSTÄLLNING "+y],
     ["Totalt antal skott",tot],["Antal poster",ye.length],["Antal skjutdagar",days],
     ["Antal aktiva skyttar",shooters],
-    ["Att betala totalt (kr)",Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100],
+    ["Utestående belopp (kr)",Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100],
     [],["Skott per månad"]];
   months.forEach((m,i)=>r.push([m,msum[i]]));
   r.push([],["Sammanställt av skjutbaneansvarig",ORG.skjutbaneansvarig],
