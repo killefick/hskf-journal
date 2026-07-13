@@ -1391,10 +1391,12 @@ async function enterApp(session){
   $("#passCard").classList.toggle("hide", !fullLog);
   $("#koptWrap").classList.toggle("hide", !fullLog);
   $("#moreWrap").classList.toggle("hide", !fullLog);
-  if(fullLog){
-    if(!(pass.ledare||"").trim()) pass.ledare=me;
-  }else{
+  // Passet är personligt: byter användare i samma webbläsare nollställs
+  // skjutledare/tävling till den inloggade istället för att ärvas från den
+  // som sköt tidigare samma dag. Samma användare behåller sina inställningar.
+  if(!fullLog || pass.uid!==_uid){
     pass.datum=today(); pass.ledare=me; pass.tavling=false; pass.tavlingNamn="";
+    pass.uid=_uid;
   }
   savePass();
   applyPassToForm();
