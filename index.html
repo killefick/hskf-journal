@@ -431,11 +431,12 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.85";
+const APP_VERSION = "v.86";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
+/* "Övningsskjutning" står inte i listan – det är standard för alla poster
+   utan vald tävling (även vanliga skyttar som inte väljer något). */
 const TAVLINGAR = [
-  "Övningsskjutning",
   "FSR Propagandatävlan",
   "Vårpokalen",
   "D. von Schedvins vandringspris",
@@ -953,11 +954,11 @@ async function quickAdd(){
   const row={
     datum:pass.datum||today(), skytt_id,
     antal_skott:+skott, skjutledare:pass.ledare,
-    anmarkning:"", pris:+PRIS_PER_SKOTT||0
+    anmarkning:"", pris:+PRIS_PER_SKOTT||0,
+    tavling_namn:(isComp&&(pass.tavlingNamn||"").trim())||"Övningsskjutning"
   };
   if(isComp){
     row.tavling=true;
-    row.tavling_namn=(pass.tavlingNamn||"").trim();
     row.poang=poangVal!==""?+poangVal:null;
   }
   if($("#q-kopt").checked) row.kopt=true;
@@ -1124,7 +1125,8 @@ $("#restoreFile").addEventListener("change",async ev=>{
 });
 function fillTavlingar(sel,emptyLabel,extra){
   let html=`<option value="">${emptyLabel}</option>`+TAVLINGAR.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
-  if(extra && !TAVLINGAR.includes(extra)) html+=`<option value="${esc(extra)}">${esc(extra)} (eget)</option>`;
+  if(extra && !TAVLINGAR.includes(extra))
+    html+=`<option value="${esc(extra)}">${esc(extra)}${extra==="Övningsskjutning"?"":" (eget)"}</option>`;
   sel.innerHTML=html;
 }
 
@@ -1284,7 +1286,7 @@ $("#e-save").addEventListener("click",async()=>{
   if(editWasComp||pv!==""||tn){
     row.poang=pv!==""?+pv:null;
     row.tavling=!!(pv!==""||tn);
-    row.tavling_namn=tn;
+    row.tavling_namn=tn||"Övningsskjutning";
   }
   if(editWasKopt||$("#e-kopt").checked) row.kopt=$("#e-kopt").checked;
   try{ await updateRow(editId,row); $("#editModal").classList.remove("open"); await loadAll(); renderAll(); }
