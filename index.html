@@ -226,7 +226,7 @@
   <div id="logView" class="hide">
     <div class="card" id="passCard">
       <div class="card-head">
-        <h2>Dagens pass</h2>
+        <h2>Dagens skytte</h2>
         <span class="hint">Ställs in en gång – gäller alla skyttar du registrerar.</span>
       </div>
       <div class="card-body">
@@ -262,7 +262,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Dagens pass</h2><span class="hint" id="passTotal"></span></div>
+      <div class="card-head"><h2>Dagens skytte</h2><span class="hint" id="passTotal"></span></div>
       <div class="card-body">
         <ul class="slist" id="sessionList"></ul>
         <div class="empty" id="sessionEmpty"><div>Inga skyttar registrerade för <span id="passDateLabel">datumet</span> ännu.</div></div>
@@ -890,7 +890,7 @@ function renderSkyttPicker(){
 /* ---------- quick add ---------- */
 async function quickAdd(){
   if(!(pass.ledare||"").trim()){
-    showBanner("warn","Ange <b>skjutledare</b> för dagens pass innan du registrerar skyttar – krävs för en giltig journalpost.",4000);
+    showBanner("warn","Ange <b>skjutledare</b> för dagens skytte innan du registrerar skyttar – krävs för en giltig journalpost.",4000);
     $("#p-ledare").focus(); return;
   }
   const skyttEl=$("#q-skytt");
@@ -1385,7 +1385,7 @@ async function enterApp(session){
   $("#restoreBtn").classList.toggle("hide", !isAdmin);
   $("#logoutBtn").classList.remove("hide");
   $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
-  // Medlem får en minimal loggvy: inget Dagens pass-kort, ingen köpt skott,
+  // Medlem får en minimal loggvy: inget Dagens skytte-kort, ingen köpt skott,
   // ingen avvikande skjutledare – datum=idag, skjutledaren är de själva.
   const fullLog = isAdmin||isRevisor;
   $("#passCard").classList.toggle("hide", !fullLog);
