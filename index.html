@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v72";
+const APP_VERSION = "v73";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -561,11 +561,13 @@ function applyCompUI(){
   $("#poangField").classList.toggle("hide",!on);
   document.querySelector(".quick").classList.toggle("comp",on);
 }
-// Sätt skjutledar-väljaren; lägg till namnet som alternativ om det saknas i
-// SKJUTLEDARE (t.ex. en inloggad admin/ledare som inte står i listan).
+// Sätt skjutledar-väljaren. Bygger om alternativen varje gång (annars ligger
+// tidigare tillagda namn kvar som dubbletter); ett namn utanför SKJUTLEDARE
+// (t.ex. en inloggad ledare som inte står i listan) läggs till sist.
 function setLedareSelect(name){
   const sel=$("#p-ledare");
-  if(name && ![...sel.options].some(o=>o.value===name))
+  sel.innerHTML=`<option value="">Välj skjutledare…</option>`+SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
+  if(name && !SKJUTLEDARE.includes(name))
     sel.insertAdjacentHTML("beforeend",`<option>${esc(name)}</option>`);
   sel.value=name||"";
 }
@@ -1439,7 +1441,6 @@ async function doLogin(){
   pass.datum = today();   // datum utgår alltid från idag vid start (kan ändras i passet)
   savePass();
   fillTavlingar($("#p-tavlingnamn"),"Välj tävling…");
-  $("#p-ledare").innerHTML=`<option value="">Välj skjutledare…</option>`+SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
   $("#leaderList").innerHTML=SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
   applyPassToForm();
   if(!REMOTE){
