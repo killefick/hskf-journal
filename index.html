@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v71";
+const APP_VERSION = "v72";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -774,7 +774,7 @@ function renderMembers(){
     // Revisor sees the full list but no mutating controls — admin only.
     const actions = !isAdmin ? "" : `
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}" aria-label="Redigera" title="Redigera">✎</button>
-        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Återst. lösen</button>
+        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Reset pwd</button>
         ${isMe?"":(m.active===false
           ? `<button class="btn ghost tiny" data-react="${esc(m.id)}" title="Återaktivera">↻</button>`
           : `<button class="btn ghost tiny" data-deact="${esc(m.id)}" title="Inaktivera">⏸</button>`)}
