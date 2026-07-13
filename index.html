@@ -431,7 +431,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.86";
+const APP_VERSION = "v.87";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
@@ -1371,9 +1371,15 @@ if("serviceWorker" in navigator){
     const b=$("#updateBanner");
     if(!worker||b.dataset.shown) return; b.dataset.shown="1";
     b.innerHTML=`<div class="banner ok" id="uBan" style="cursor:pointer"><span class="dot ok"></span><div><b>Ny version finns.</b> Tryck för att uppdatera.</div><span class="x" style="opacity:1;font-weight:600;border:1px solid #bcd6ee;border-radius:7px;padding:4px 10px">Uppdatera</span></div>`;
-    $("#uBan").addEventListener("click",()=>{
+    $("#uBan").addEventListener("click",async()=>{
       b.innerHTML=`<div class="banner ok"><span class="dot ok"></span><div>Uppdaterar…</div></div>`;
-      worker.postMessage({type:"SKIP_WAITING"});
+      // Hämta AKTUELL väntande SW – den som fångades när banderollen visades
+      // kan ha hunnit ersättas av en ännu nyare (och blivit "redundant");
+      // ett meddelande till den gör då ingenting och sidan hängde på Uppdaterar.
+      const reg=await navigator.serviceWorker.getRegistration().catch(()=>null);
+      ((reg&&reg.waiting)||worker).postMessage({type:"SKIP_WAITING"});
+      // Skyddsnät: ladda om ändå om controllerchange inte kommit inom 3 s.
+      setTimeout(()=>{ if(!refreshing){ refreshing=true; location.reload(); } },3000);
     });
   };
   window.addEventListener("load", async ()=>{
