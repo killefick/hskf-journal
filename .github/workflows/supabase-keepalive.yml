@@ -1,0 +1,20 @@
+name: Supabase keep-alive
+
+# Free-tier Supabase pauses projects after ~1 week without database activity.
+# This pings the REST API daily so a real query runs against the database.
+# The anon key is the same publishable key committed in index.html (safe with RLS).
+on:
+  schedule:
+    - cron: "17 6 * * *" # daily 06:17 UTC (off-the-hour to dodge GitHub cron congestion)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase REST API
+        run: |
+          curl -fsS --retry 3 --retry-delay 30 \
+            -H "apikey: sb_publishable_r66dpwZMS57w5DBGtd_rIw_Rm_0o2-1" \
+            "https://jjxvgmobigoyzbssknxp.supabase.co/rest/v1/skjuttillfallen?select=id&limit=1" \
+            -o /dev/null -w "HTTP %{http_code}\n"
