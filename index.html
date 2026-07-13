@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v69";
+const APP_VERSION = "v70";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -1408,6 +1408,9 @@ async function enterApp(session){
     pass.datum=today(); pass.ledare=shortName(me); pass.tavling=false; pass.tavlingNamn="";
     pass.uid=_uid; pass.day=today();
   }
+  // Normalisera ett sparat värde från äldre versioner ("Nils Abrahamson",
+  // "Nils A") mot listans format så att inga dubbletter dyker upp i väljaren.
+  if(!SKJUTLEDARE.includes(pass.ledare)) pass.ledare=shortName(pass.ledare);
   savePass();
   applyPassToForm();
   await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
