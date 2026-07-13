@@ -310,6 +310,7 @@
         </table>
       </div>
       <div class="empty hide" id="adminEmpty"><div class="big">Inga poster för året</div></div>
+      <button class="btn ghost tiny hide" id="showAllRowsBtn" style="margin-top:10px"></button>
     </div>
 
     <div class="card tab-panel hide" id="compCard">
@@ -431,7 +432,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.88";
+const APP_VERSION = "v.89";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
@@ -520,11 +521,25 @@ const local = {
   read(){ try{return JSON.parse(localStorage.getItem("hskf_entries")||"[]");}catch{return [];} },
   write(a){ localStorage.setItem("hskf_entries", JSON.stringify(a)); }
 };
+// Supabase svarar med max 1000 rader per anrop – hämta i omgångar tills en
+// omgång är kort, annars försvinner äldre poster tyst ur statistik/export/backup.
+// Sekundär sortering på id gör sidbrytningen stabil vid lika datum.
+async function fetchAllRows(){
+  const rows=[], CHUNK=1000;
+  for(let from=0;;from+=CHUNK){
+    const {data,error}=await sb.from(TABLE).select("*")
+      .order("datum",{ascending:false}).order("id",{ascending:true})
+      .range(from,from+CHUNK-1);
+    if(error) throw error;
+    rows.push(...(data||[]));
+    if(!data||data.length<CHUNK) break;
+  }
+  return rows;
+}
 async function loadAll(){
   if(REMOTE){
-    const {data,error}=await sb.from(TABLE).select("*").order("datum",{ascending:false});
-    if(error){ showBanner("warn","Kunde inte läsa databasen: "+error.message); return; }
-    entries=data||[];
+    try{ entries=await fetchAllRows(); }
+    catch(error){ showBanner("warn","Kunde inte läsa databasen: "+error.message); return; }
   } else { entries=local.read(); }
   entries.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
 }
@@ -755,6 +770,7 @@ function renderAdmin(){
   renderAdminTable();
   renderComp();
 }
+let showAllRows=false;
 function renderAdminTable(){
   const y=$("#a-year").value||currentYearStr();
   const q=$("#search").value.trim().toLowerCase();
@@ -763,7 +779,14 @@ function renderAdminTable(){
   rows.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
   $("#rowCount").textContent=`(${rows.length})`;
   $("#adminEmpty").classList.toggle("hide",rows.length>0);
-  $("#adminTbody").innerHTML=rows.map(e=>{
+  // Rendera de 200 senaste; "Visa alla" tar fram resten. En sökning visar
+  // alltid alla träffar (filtreringen sker i minnet ovan).
+  const LIMIT=200;
+  const shown=(showAllRows||q)?rows:rows.slice(0,LIMIT);
+  const btn=$("#showAllRowsBtn");
+  btn.classList.toggle("hide", shown.length>=rows.length);
+  btn.textContent=`Visa alla (${rows.length})`;
+  $("#adminTbody").innerHTML=shown.map(e=>{
     return `<tr>
       <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(nameOf(e.skytt_id))}</td>
       <td class="num">${fmt(e.antal_skott)}</td>
@@ -1076,8 +1099,7 @@ async function downloadBackup(){
   try{
     const mem=await sb.functions.invoke("admin-members",{body:{action:"list"}});
     if(mem.error||!mem.data?.ok) throw new Error(await fnErr(mem,"kunde inte läsa medlemmar"));
-    const {data:jrows,error:jErr}=await sb.from(TABLE).select("*");
-    if(jErr) throw jErr;
+    const jrows=await fetchAllRows();
     const fak=await sb.functions.invoke("send-invoice",{body:{action:"meta"}});
     if(fak.error||!fak.data?.ok) throw new Error((fak.data&&fak.data.error)||(fak.error&&fak.error.message)||"kunde inte läsa fakturadata");
     const members=mem.data.data||[], skjut=jrows||[], faktura=fak.data.data||[];
@@ -1169,7 +1191,8 @@ $("#logBtn").addEventListener("click",()=>{
 // Klick på loggan/rubriken = samma som "Till inmatning", men bara när den knappen
 // är synlig (admin i admin-vyn) — så medlem/revisor/inloggning påverkas inte.
 $("#brandHome").addEventListener("click",()=>{ const b=$("#logBtn"); if(!b.classList.contains("hide")) b.click(); });
-$("#a-year").addEventListener("change",renderAdmin);
+$("#a-year").addEventListener("change",()=>{showAllRows=false;renderAdmin();});
+$("#showAllRowsBtn").addEventListener("click",()=>{showAllRows=true;renderAdminTable();});
 function setAdminTab(id){
   document.querySelectorAll("#adminView .tab-panel").forEach(p=>p.classList.toggle("hide", p.id!==id));
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===id));
