@@ -224,29 +224,25 @@
 
   <!-- ============ LOGGNINGSVY ============ -->
   <div id="logView" class="hide">
-    <div class="card" id="passCard">
-      <div class="card-head">
-        <h2>Dagens skytte</h2>
-        <span class="hint">Ställs in en gång – gäller alla skyttar du registrerar.</span>
-      </div>
-      <div class="card-body">
-        <div class="pass">
-          <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
-          <div class="field"><label for="p-ledare">Skjutledare</label><select id="p-ledare"></select></div>
-        </div>
-        <div style="margin-top:14px">
-          <label class="comp-toggle"><input type="checkbox" id="p-tavling"> Tävling (registrera poäng per skytt)</label>
-          <div class="field hide" id="compNameWrap" style="margin-top:11px;max-width:340px">
-            <label for="p-tavlingnamn">Tävling</label>
-            <select id="p-tavlingnamn"></select>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-head"><h2>Registrera</h2></div>
       <div class="card-body">
+        <!-- Passinställningar (datum/skjutledare/tävling) – bara admin/ledare;
+             gäller alla skyttar som registreras. Döljs för medlem. -->
+        <div id="passCard">
+          <div class="pass">
+            <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
+            <div class="field"><label for="p-ledare">Skjutledare</label><select id="p-ledare"></select></div>
+          </div>
+          <div style="margin-top:14px">
+            <label class="comp-toggle"><input type="checkbox" id="p-tavling"> Tävling (registrera poäng per skytt)</label>
+            <div class="field hide" id="compNameWrap" style="margin-top:11px;max-width:340px">
+              <label for="p-tavlingnamn">Tävling</label>
+              <select id="p-tavlingnamn"></select>
+            </div>
+          </div>
+          <hr style="border:0;border-top:1px solid rgba(0,0,0,.1);margin:16px 0">
+        </div>
         <div class="quick">
           <div class="field" id="qSkyttField"><label for="q-skytt">Namn</label><div id="q-skytt-wrap"></div></div>
           <div class="field"><label for="q-skott">Antal skott</label><input type="number" id="q-skott" min="0" step="1" inputmode="numeric" enterkeyhint="next" placeholder="0"></div>
@@ -433,7 +429,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.79";
+const APP_VERSION = "v.80";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
