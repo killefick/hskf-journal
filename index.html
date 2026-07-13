@@ -425,10 +425,12 @@ const ORG = {
   skjutbaneansvarig:"Bertil Hagström",
 };
 
-/* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
-const PRIS_PER_SKOTT = 9;
+/* Pris per skott i kronor – standardvärde. Det delade priset läses från
+   app_settings i databasen (Analys → redigerbart av admin) och fryses per
+   post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
+let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.81";
+const APP_VERSION = "v.82";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -483,11 +485,33 @@ function validDate(s){
   const d=new Date(s+"T00:00:00Z"); return !isNaN(d) && d.toISOString().slice(0,10)===s;
 }
 const kr = n => (Number(n)||0).toLocaleString("sv-SE",{style:"currency",currency:"SEK"});
-const rowCost = e => e.kopt ? (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0) : 0;          // historisk kostnad (oavsett betald)
-const rowOutstanding = e => (e.kopt && !e.betald) ? (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0) : 0; // kvar att betala
-const rowPaid = e => (e.kopt && e.betald) ? (+e.antal_skott||0) * (+PRIS_PER_SKOTT||0) : 0;          // redan betalt
+// Priset som gäller för en post: det frysta radpriset, annars dagens pris.
+const rowPris = e => (e.pris!=null && e.pris!=="") ? (+e.pris||0) : (+PRIS_PER_SKOTT||0);
+const rowCost = e => e.kopt ? (+e.antal_skott||0) * rowPris(e) : 0;          // historisk kostnad (oavsett betald)
+const rowOutstanding = e => (e.kopt && !e.betald) ? (+e.antal_skott||0) * rowPris(e) : 0; // kvar att betala
+const rowPaid = e => (e.kopt && e.betald) ? (+e.antal_skott||0) * rowPris(e) : 0;          // redan betalt
 const koptaSkott = e => e.kopt ? (+e.antal_skott||0) : 0;
-const hasPrices = +PRIS_PER_SKOTT > 0;
+const hasPrices = () => +PRIS_PER_SKOTT > 0;
+// Delat pris i app_settings (nyckel pris_per_skott). Saknas tabellen/raden
+// används standardvärdet ovan. Lokalt läge sparar i localStorage.
+async function loadPrice(){
+  if(!REMOTE){ const v=+localStorage.getItem("hskf_pris"); if(v>0) PRIS_PER_SKOTT=v; return; }
+  try{
+    const {data}=await sb.from("app_settings").select("value").eq("key","pris_per_skott").maybeSingle();
+    if(data && +data.value>0) PRIS_PER_SKOTT=+data.value;
+  }catch(_){/* tabellen finns inte ännu – kör vidare på standardpriset */}
+}
+async function savePrice(v){
+  PRIS_PER_SKOTT=v;
+  if(REMOTE){
+    const {error}=await sb.from("app_settings").upsert({key:"pris_per_skott",value:v});
+    if(error){ showBanner("warn","Kunde inte spara priset: "+esc(error.message)+" – har du kört migreringen (app_settings) i Supabase?",7000); return; }
+  } else {
+    localStorage.setItem("hskf_pris",String(v));
+  }
+  showBanner("ok",`Pris per köpt skott: ${kr(v)} – gäller poster som registreras från och med nu.`,5000);
+  renderAll();
+}
 
 /* ---------- data layer ---------- */
 const local = {
@@ -643,12 +667,17 @@ async function loadFakturaMeta(){
 function buildInvoiceText(id, year, reminder){
   const name=nameOf(id);
   const byDate={};
+  // Radpriset är fryst vid registrering, så olika dagar kan ha olika pris.
+  let totalKr=0; const prisSet=new Set();
   entriesForYear(year)
     .filter(e=>e.skytt_id===id && e.kopt && !e.betald && (+e.antal_skott||0)>0)
-    .forEach(e=>{ byDate[e.datum]=(byDate[e.datum]||0)+(+e.antal_skott||0); });
+    .forEach(e=>{ byDate[e.datum]=(byDate[e.datum]||0)+(+e.antal_skott||0); totalKr+=rowOutstanding(e); prisSet.add(rowPris(e)); });
   const dates=Object.keys(byDate).sort();
   const totalSkott=dates.reduce((s,d)=>s+byDate[d],0);
-  const totalKr=totalSkott*(+PRIS_PER_SKOTT||0);
+  totalKr=Math.round(totalKr*100)/100;
+  const totalLine = prisSet.size===1
+    ? `Totalt: ${fmt(totalSkott)} skott × ${fmt([...prisSet][0])} kr = ${fmt(totalKr)} kr`
+    : `Totalt: ${fmt(totalSkott)} skott = ${fmt(totalKr)} kr`;
   const lines=dates.map(d=>`  ${d}:    ${fmt(byDate[d])} skott`);
   const subject=reminder
     ? `Påminnelse: Faktura ammunition – Hillareds skytteförening ${year}`
@@ -663,7 +692,7 @@ ${intro}
 
 Köpta skott:
 ${lines.join("\n")}
-Totalt: ${fmt(totalSkott)} skott × ${fmt(PRIS_PER_SKOTT)} kr = ${fmt(totalKr)} kr
+${totalLine}
 
 Betalas till Bankgiro: 370-4624
 Ange som meddelande: ${name} Ammunition
@@ -696,22 +725,31 @@ function renderAdmin(){
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
     const email=accountEmail(n);
-    const fakturaInfo=(isAdmin&&hasPrices&&REMOTE&&v.out>0)
+    const fakturaInfo=(isAdmin&&hasPrices()&&REMOTE&&v.out>0)
       ? `<div style="margin-top:4px;font-weight:400">`
         + (email?`<span class="hint">${esc(email)}</span>`:`<span class="hint" style="color:#b00020">ingen e-post på kontot</span>`)
         + (fm.faktura_skickad?` <span class="pill medlem">Skickad ${esc(String(fm.faktura_skickad).slice(0,10))}</span>`:``)
         + `</div>`
       : "";
-    const act = !isAdmin||!hasPrices ? ""
+    const act = !isAdmin||!hasPrices() ? ""
       : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${fm.faktura_skickad?` data-reminder="1"`:``}>${fm.faktura_skickad?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
     return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
-  $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices&&REMOTE&&list.some(([,v])=>v.out>0)));
-  $("#priceHint").textContent = hasPrices
-    ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+"."
-    : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
+  $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices()&&REMOTE&&list.some(([,v])=>v.out>0)));
+  // Admin redigerar priset direkt här; nya poster fryser priset vid registrering.
+  if(isAdmin){
+    $("#priceHint").innerHTML=`Pris per köpt skott:
+      <input type="number" id="prisInput" min="0" step="0.5" value="${+PRIS_PER_SKOTT||0}"
+        style="width:72px;padding:3px 6px;margin:0 4px"> kr
+      <span class="hint">(gäller poster som registreras från och med nu)</span>`;
+    $("#prisInput").addEventListener("change",e=>{ const v=+e.target.value; if(v>=0) savePrice(v); });
+  }else{
+    $("#priceHint").textContent = hasPrices()
+      ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+"."
+      : "Inget pris satt.";
+  }
   renderAdminTable();
   renderComp();
 }
@@ -914,7 +952,7 @@ async function quickAdd(){
   const row={
     datum:pass.datum||today(), skytt_id,
     antal_skott:+skott, skjutledare:pass.ledare,
-    anmarkning:""
+    anmarkning:"", pris:+PRIS_PER_SKOTT||0
   };
   if(isComp){
     row.tavling=true;
@@ -991,7 +1029,7 @@ $("#exportCsv").addEventListener("click",()=>{
   const y=$("#a-year").value; const ye=entriesForYear(y);
   const comp=compResultRows(ye);
   const compBlock=comp.length?[[],["TÄVLINGSRESULTAT "+y],["Datum","Tävling","Skytt","Poäng"],...comp]:[];
-  const pay=hasPrices?payRows(ye):[];
+  const pay=hasPrices()?payRows(ye):[];
   const payTot=Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100;
   const paidTot=Math.round(ye.reduce((s,e)=>s+rowPaid(e),0)*100)/100;
   const payBlock=pay.length?[[],["UTESTÅENDE "+y+" – pris per köpt skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Köpta skott","Utestående (kr)","Betalt (kr)"],...pay,["Totalt:","",payTot,paidTot]]:[];
@@ -1018,7 +1056,7 @@ $("#exportXlsx").addEventListener("click",()=>{
     ws3["!cols"]=[{wch:12},{wch:22},{wch:24},{wch:10}];
     XLSX.utils.book_append_sheet(wb,ws3,"Tävlingsresultat");
   }
-  const pay=hasPrices?payRows(ye):[];
+  const pay=hasPrices()?payRows(ye):[];
   if(pay.length){
     const payTot=Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100;
     const paidTot=Math.round(ye.reduce((s,e)=>s+rowPaid(e),0)*100)/100;
@@ -1410,6 +1448,7 @@ async function enterApp(session){
   if(!SKJUTLEDARE.includes(pass.ledare)) pass.ledare=shortName(pass.ledare);
   savePass();
   applyPassToForm();
+  await loadPrice();
   await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
   { const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
 }
@@ -1443,6 +1482,7 @@ async function doLogin(){
     isAdmin=true;
     $("#logView").classList.remove("hide"); $("#adminBtn").classList.remove("hide");
     showBanner("warn",`<b>Lokalt läge.</b> Sparas bara i denna webbläsare. Koppla Supabase (Admin → ⚙ Databas eller CONFIG) för delad journal med inloggning.`);
+    await loadPrice();
     await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
     return;
   }

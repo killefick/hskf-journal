@@ -383,3 +383,35 @@ create trigger guard_skjut_write
 > **Note on admin inserts for other shooters.** When an admin logs shots for
 > another member, `created_by` defaults to the admin's uid while `skytt_id` is the
 > other member — allowed because `public.is_admin()` short-circuits the guard.
+
+## 14. Redigerbart pris per skott (2026-07-13)
+
+Priset per köpt skott flyttar från en konstant i `index.html` till databasen så
+att admin kan ändra det i Analys-fliken. Priset **fryses per post** vid
+registrering (kolumnen `pris`); en prisändring gäller bara poster som
+registreras därefter. Kör i SQL-editorn:
+
+```sql
+-- Delade appinställningar: läsbar för inloggade, skrivbar för admin.
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null
+);
+alter table public.app_settings enable row level security;
+revoke select on public.app_settings from anon;
+
+drop policy if exists "read" on public.app_settings;
+create policy "read" on public.app_settings for select to authenticated using (true);
+
+drop policy if exists "write" on public.app_settings;
+create policy "write" on public.app_settings for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+
+insert into public.app_settings (key, value) values ('pris_per_skott', '9')
+  on conflict (key) do nothing;
+
+-- Fryst radpris. Backfylls med 9 kr (priset som gällt hittills);
+-- klienten faller tillbaka på dagens pris om pris är null.
+alter table public.skjuttillfallen add column if not exists pris numeric;
+update public.skjuttillfallen set pris = 9 where pris is null;
+```
