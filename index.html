@@ -254,10 +254,6 @@
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
         <label class="comp-toggle" id="koptWrap" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
-        <div style="margin-top:10px" id="moreWrap"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare för denna post</a></div>
-        <div id="moreFields" class="pass hide" style="margin-top:12px">
-          <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
-        </div>
       </div>
     </div>
 
@@ -440,7 +436,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v66";
+const APP_VERSION = "v67";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -548,9 +544,12 @@ async function delRow(id){
 // vid omladdning i samma flik men försvinner när fliken/appen stängs (ingen
 // långtidspersistens). Datum sätts ändå alltid till idag vid start (se init).
 // Rensa ev. gammalt värde som tidigare sparades i localStorage.
-localStorage.removeItem("hskf_pass");
-const pass = JSON.parse(sessionStorage.getItem("hskf_pass")||"null") || {datum:today(),ledare:"",tavling:false,tavlingNamn:""};
-function savePass(){ sessionStorage.setItem("hskf_pass", JSON.stringify(pass)); }
+// Passet ligger i localStorage så det överlever att PWA:n stängs och öppnas
+// igen (sessionStorage töms per start på mobil – skjutledaren "fastnade" då
+// på den inloggade). Nollställs per användare och dag i enterApp.
+sessionStorage.removeItem("hskf_pass");
+const pass = JSON.parse(localStorage.getItem("hskf_pass")||"null") || {datum:today(),ledare:"",tavling:false,tavlingNamn:""};
+function savePass(){ localStorage.setItem("hskf_pass", JSON.stringify(pass)); }
 function applyCompUI(){
   const on=!!pass.tavling;
   $("#compNameWrap").classList.toggle("hide",!on);
@@ -900,12 +899,11 @@ async function quickAdd(){
   const skott=$("#q-skott").value;
   if(!skytt_id){ if(canPickAny) skyttEl.focus(); showBanner("warn","Välj en skytt."); return; }
   if(skott===""||+skott<0){ $("#q-skott").focus(); return; }
-  const moreOpen=!$("#moreFields").classList.contains("hide");
   const isComp=!!pass.tavling;
   const poangVal=$("#q-poang").value;
   const row={
     datum:pass.datum||today(), skytt_id,
-    antal_skott:+skott, skjutledare:(moreOpen&&$("#q-ledare").value.trim())||pass.ledare,
+    antal_skott:+skott, skjutledare:pass.ledare,
     anmarkning:""
   };
   if(isComp){
@@ -1092,7 +1090,6 @@ $("#p-datum").addEventListener("change",e=>{
 });
 $("#p-tavling").addEventListener("change",e=>{pass.tavling=e.target.checked;savePass();applyCompUI();});
 $("#p-tavlingnamn").addEventListener("change",e=>{pass.tavlingNamn=e.target.value;savePass();});
-$("#moreToggle").addEventListener("click",e=>{e.preventDefault();const m=$("#moreFields");m.classList.toggle("hide");if(!m.classList.contains("hide")){$("#q-ledare").value=pass.ledare;}});
 $("#q-add").addEventListener("click",quickAdd);
 document.addEventListener("keydown",e=>{ if(e.target&&e.target.id==="q-skytt"&&e.key==="Enter"){ e.preventDefault(); $("#q-skott").focus(); } });
 $("#q-skott").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault(); if(pass.tavling){$("#q-poang").focus();} else {quickAdd();}}});
@@ -1391,13 +1388,12 @@ async function enterApp(session){
   const fullLog = isAdmin||isLeader;
   $("#passCard").classList.toggle("hide", !fullLog);
   $("#koptWrap").classList.toggle("hide", !fullLog);
-  $("#moreWrap").classList.toggle("hide", !fullLog);
-  // Passet är personligt: byter användare i samma webbläsare nollställs
-  // skjutledare/tävling till den inloggade istället för att ärvas från den
-  // som sköt tidigare samma dag. Samma användare behåller sina inställningar.
-  if(!fullLog || pass.uid!==_uid){
+  // Passet är personligt och gäller en dag i taget: samma användare behåller
+  // skjutledare/tävling över omstarter samma dag; en annan användare eller en
+  // ny dag börjar om med sig själv som skjutledare och tävling av.
+  if(!fullLog || pass.uid!==_uid || pass.day!==today()){
     pass.datum=today(); pass.ledare=me; pass.tavling=false; pass.tavlingNamn="";
-    pass.uid=_uid;
+    pass.uid=_uid; pass.day=today();
   }
   savePass();
   applyPassToForm();
