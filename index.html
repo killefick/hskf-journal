@@ -232,7 +232,7 @@
       <div class="card-body">
         <div class="pass">
           <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
-          <div class="field"><label for="p-ledare">Skjutledare</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
+          <div class="field"><label for="p-ledare">Skjutledare</label><select id="p-ledare"></select></div>
         </div>
         <div style="margin-top:14px">
           <label class="comp-toggle"><input type="checkbox" id="p-tavling"> Tävling (registrera poäng per skytt)</label>
@@ -344,10 +344,7 @@
 </div>
 
 <!-- datalists -->
-<datalist id="leaderList">
-  <option>Nils Abrahamson</option><option>Bertil Hagström</option><option>Jan-Erik Ahl</option>
-  <option>Håkan Ragnarsson</option><option>Alexander Ragnarsson</option><option>Urban Blomqvist</option>
-</datalist>
+<datalist id="leaderList"></datalist><!-- fylls från SKJUTLEDARE -->
 
 <!-- EDIT MODAL -->
 <div class="modal-bg" id="editModal"><div class="modal">
@@ -436,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v67";
+const APP_VERSION = "v68";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -446,6 +443,12 @@ const TAVLINGAR = [
   "D. von Schedvins vandringspris",
   "Korporationsskjutning",
   "Höstpokalen",
+];
+
+/* Skjutledare i rullgardinen. Lägg till/ta bort här. */
+const SKJUTLEDARE = [
+  "Nils Abrahamson","Bertil Hagström","Jan-Erik Ahl",
+  "Håkan Ragnarsson","Alexander Ragnarsson","Urban Blomqvist",
 ];
 
 const LS = { url:localStorage.getItem("hskf_url")||"", key:localStorage.getItem("hskf_key")||"" };
@@ -556,9 +559,17 @@ function applyCompUI(){
   $("#poangField").classList.toggle("hide",!on);
   document.querySelector(".quick").classList.toggle("comp",on);
 }
+// Sätt skjutledar-väljaren; lägg till namnet som alternativ om det saknas i
+// SKJUTLEDARE (t.ex. en inloggad admin/ledare som inte står i listan).
+function setLedareSelect(name){
+  const sel=$("#p-ledare");
+  if(name && ![...sel.options].some(o=>o.value===name))
+    sel.insertAdjacentHTML("beforeend",`<option>${esc(name)}</option>`);
+  sel.value=name||"";
+}
 function applyPassToForm(){
   $("#p-datum").value=pass.datum||today();
-  $("#p-ledare").value=pass.ledare||"";
+  setLedareSelect(pass.ledare||"");
   $("#p-tavling").checked=!!pass.tavling;
   $("#p-tavlingnamn").value=pass.tavlingNamn||"";
   $("#passDateLabel").textContent=pass.datum||today();
@@ -1081,7 +1092,7 @@ function fillTavlingar(sel,emptyLabel,extra){
 
 /* ---------- events ---------- */
 // pass settings persistence
-$("#p-ledare").addEventListener("input",e=>{pass.ledare=e.target.value;savePass();});
+$("#p-ledare").addEventListener("change",e=>{pass.ledare=e.target.value;savePass();});
 $("#p-datum").addEventListener("change",e=>{
   pass.datum=e.target.value||today();
   if(!e.target.value) e.target.value=pass.datum;
@@ -1423,6 +1434,8 @@ async function doLogin(){
   pass.datum = today();   // datum utgår alltid från idag vid start (kan ändras i passet)
   savePass();
   fillTavlingar($("#p-tavlingnamn"),"Välj tävling…");
+  $("#p-ledare").innerHTML=`<option value="">Välj skjutledare…</option>`+SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
+  $("#leaderList").innerHTML=SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
   applyPassToForm();
   if(!REMOTE){
     // Lokalt läge – ingen inloggning, sparas i denna webbläsare
