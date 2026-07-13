@@ -273,8 +273,8 @@
       <select id="a-year" style="width:auto"></select>
       <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
       <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
-      <button class="btn ghost tiny hide" id="backupBtn">⤓ Säkerhetskopia</button>
-      <button class="btn ghost tiny hide" id="restoreBtn">⤴ Återställ</button>
+      <button class="btn ghost tiny hide" id="backupBtn">⤓ Backup</button>
+      <button class="btn ghost tiny hide" id="restoreBtn">⤴ Restore</button>
       <input type="file" id="restoreFile" accept="application/json" class="hide">
       <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
     </div>
@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v70";
+const APP_VERSION = "v71";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
