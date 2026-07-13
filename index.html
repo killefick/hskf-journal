@@ -293,8 +293,8 @@
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
         <div style="margin-top:20px"><div class="label" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">Skott &amp; kostnad per skytt <button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button></div>
+          <p class="hint" id="priceHint" style="margin:0 2px 8px"></p>
           <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Utestående</th><th></th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
-          <p class="hint" id="priceHint" style="margin:8px 2px 0"></p>
         </div>
       </div>
     </div>
@@ -431,7 +431,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.87";
+const APP_VERSION = "v.88";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
