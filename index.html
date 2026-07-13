@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v75";
+const APP_VERSION = "v76";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -715,7 +715,7 @@ function renderAdmin(){
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices&&REMOTE&&list.some(([,v])=>v.out>0)));
   $("#priceHint").textContent = hasPrices
-    ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+". Endast köpta skott debiteras – egen ammunition är gratis."
+    ? "Pris per köpt skott: "+kr(PRIS_PER_SKOTT)+"."
     : "Inget pris satt. Ange PRIS_PER_SKOTT i index.html för att räkna kostnad.";
   renderAdminTable();
   renderComp();
