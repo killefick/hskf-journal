@@ -245,7 +245,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Registrera skytt</h2></div>
+      <div class="card-head"><h2>Registrera</h2></div>
       <div class="card-body">
         <div class="quick">
           <div class="field" id="qSkyttField"><label for="q-skytt">Namn</label><div id="q-skytt-wrap"></div></div>
@@ -254,10 +254,9 @@
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
         <label class="comp-toggle" id="koptWrap" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
-        <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
+        <div style="margin-top:10px" id="moreWrap"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
-          <div class="field" id="qLedareField"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
-          <div class="field"><label for="q-anm">Anmärkning</label><input type="text" id="q-anm" placeholder="(valfritt)"></div>
+          <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
         </div>
       </div>
     </div>
@@ -906,7 +905,7 @@ async function quickAdd(){
   const row={
     datum:pass.datum||today(), skytt_id,
     antal_skott:+skott, skjutledare:(moreOpen&&$("#q-ledare").value.trim())||pass.ledare,
-    anmarkning:(moreOpen&&$("#q-anm").value.trim())||""
+    anmarkning:""
   };
   if(isComp){
     row.tavling=true;
@@ -921,7 +920,7 @@ async function quickAdd(){
     renderAll();
     // reset for next shooter
     if(canPickAny){ const s=$("#q-skytt"); if(s) s.value=""; }
-    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-anm").value=""; $("#q-kopt").checked=false;
+    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-kopt").checked=false;
     (canPickAny ? $("#q-skytt") : $("#q-skott")).focus();
   }catch(err){
     const m=String(err&&err.message||err);
@@ -1391,8 +1390,7 @@ async function enterApp(session){
   const fullLog = isAdmin||isRevisor;
   $("#passCard").classList.toggle("hide", !fullLog);
   $("#koptWrap").classList.toggle("hide", !fullLog);
-  $("#qLedareField").classList.toggle("hide", !fullLog);
-  $("#moreToggle").textContent = fullLog ? "+ avvikande skjutledare/anmärkning för denna post" : "+ anmärkning för denna post";
+  $("#moreWrap").classList.toggle("hide", !fullLog);
   if(fullLog){
     if(!(pass.ledare||"").trim()) pass.ledare=me;
   }else{
