@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v68";
+const APP_VERSION = "v69";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -445,11 +445,13 @@ const TAVLINGAR = [
   "Höstpokalen",
 ];
 
-/* Skjutledare i rullgardinen. Lägg till/ta bort här. */
+/* Skjutledare i rullgardinen (förnamn + efternamnets initial). Lägg till/ta bort här. */
 const SKJUTLEDARE = [
-  "Nils Abrahamson","Bertil Hagström","Jan-Erik Ahl",
-  "Håkan Ragnarsson","Alexander Ragnarsson","Urban Blomqvist",
+  "Nils A.","Bertil H.","Jan-Erik A.",
+  "Håkan R.","Alexander R.","Urban B.",
 ];
+/* "Nils Abrahamson" -> "Nils A." – samma format som SKJUTLEDARE. */
+const shortName = n => { const p=(n||"").trim().split(/\s+/); return p.length>1 ? p[0]+" "+p[p.length-1][0]+"." : (n||""); };
 
 const LS = { url:localStorage.getItem("hskf_url")||"", key:localStorage.getItem("hskf_key")||"" };
 const URL_ = CONFIG.SUPABASE_URL || LS.url;
@@ -1403,7 +1405,7 @@ async function enterApp(session){
   // skjutledare/tävling över omstarter samma dag; en annan användare eller en
   // ny dag börjar om med sig själv som skjutledare och tävling av.
   if(!fullLog || pass.uid!==_uid || pass.day!==today()){
-    pass.datum=today(); pass.ledare=me; pass.tavling=false; pass.tavlingNamn="";
+    pass.datum=today(); pass.ledare=shortName(me); pass.tavling=false; pass.tavlingNamn="";
     pass.uid=_uid; pass.day=today();
   }
   savePass();
