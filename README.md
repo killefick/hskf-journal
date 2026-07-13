@@ -29,7 +29,7 @@ Roll sätts i `profiles.role`, eller av en admin under **Admin & analys → Medl
 
 - `member`: loggar skott och läser journalen, rättar/raderar **egna** poster. Vid redigering
   är datum och skytt låsta så att ett pass inte råkar flyttas till fel dag.
-- `revisor`: betrodd granskare/ledare. Kan logga skott för vem som helst (som admin) och ser
+- `revisor` (visas som **Ledare** i appen): betrodd granskare/ledare. Kan logga skott för vem som helst (som admin) och ser
   allt – inklusive medlemslistan och Admin & analys – samt exportera. Kan rätta/radera sina
   egna nyss inmatade poster, men kan **inte** hantera medlemmar, redigera/radera andras
   poster, markera betalt eller skicka fakturor. Begränsningarna gäller även på databasnivå

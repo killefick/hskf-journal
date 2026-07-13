@@ -401,7 +401,7 @@
   <div class="m-body">
     <div class="field"><label for="m-email">E-post</label><input type="email" id="m-email" autocomplete="off" inputmode="email"></div>
     <div class="field"><label for="m-name">Namn</label><input type="text" id="m-name" autocomplete="off"></div>
-    <div class="field"><label for="m-role">Roll</label><select id="m-role"><option value="member">Medlem</option><option value="revisor">Revisor</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label for="m-role">Roll</label><select id="m-role"><option value="member">Medlem</option><option value="revisor">Ledare</option><option value="admin">Admin</option></select></div>
     <div id="mErr" style="color:var(--rust-d);font-size:13px;min-height:18px"></div>
   </div>
   <div class="m-foot">
@@ -736,7 +736,8 @@ let members=[];
 let fakturaMeta={};
 // Invoice recipient = the member's account (auth) email; single source of truth.
 const accountEmail = id => { const m=members.find(x=>x.id===id); return (m&&m.email)||""; };
-const roleLabel = r => r==="admin"?"Admin":r==="revisor"?"Revisor":"Medlem";
+// Rollen heter 'revisor' i databasen men visas som "Ledare" i appen.
+const roleLabel = r => r==="admin"?"Admin":r==="revisor"?"Ledare":"Medlem";
 const rolePill = r => r==="admin"?"gast":r==="revisor"?"revisor":"medlem";
 async function loadMembers(){
   const tb=$("#memberTbody");
@@ -755,7 +756,7 @@ function renderMembers(){
     const isMe=m.id===_uid;
     const sel=(isMe||!isAdmin)?"":`<select class="role-sel" data-roleid="${esc(m.id)}">
           <option value="member"${m.role==="member"?" selected":""}>Medlem</option>
-          <option value="revisor"${m.role==="revisor"?" selected":""}>Revisor</option>
+          <option value="revisor"${m.role==="revisor"?" selected":""}>Ledare</option>
           <option value="admin"${m.role==="admin"?" selected":""}>Admin</option>
         </select>`;
     // Revisor sees the full list but no mutating controls — admin only.
@@ -1384,7 +1385,7 @@ async function enterApp(session){
   $("#backupBtn").classList.toggle("hide", !isAdmin);
   $("#restoreBtn").classList.toggle("hide", !isAdmin);
   $("#logoutBtn").classList.remove("hide");
-  $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
+  $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · ledare":""); $("#userLabel").classList.remove("hide");
   // Medlem får en minimal loggvy: inget Dagens skytte-kort, ingen köpt skott,
   // ingen avvikande skjutledare – datum=idag, skjutledaren är de själva.
   const fullLog = isAdmin||isRevisor;
