@@ -224,7 +224,7 @@
 
   <!-- ============ LOGGNINGSVY ============ -->
   <div id="logView" class="hide">
-    <div class="card">
+    <div class="card" id="passCard">
       <div class="card-head">
         <h2>Dagens pass</h2>
         <span class="hint">Ställs in en gång – gäller alla skyttar du registrerar.</span>
@@ -232,7 +232,7 @@
       <div class="card-body">
         <div class="pass">
           <div class="field"><label for="p-datum">Datum</label><input type="date" id="p-datum"></div>
-          <div class="field"><label for="p-ledare">Skjutledare / ansvarig</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
+          <div class="field"><label for="p-ledare">Skjutledare</label><input type="text" id="p-ledare" list="leaderList" placeholder="Namn"></div>
         </div>
         <div style="margin-top:14px">
           <label class="comp-toggle"><input type="checkbox" id="p-tavling"> Tävling (registrera poäng per skytt)</label>
@@ -253,10 +253,10 @@
           <div class="field hide" id="poangField"><label for="q-poang">Poäng</label><input type="number" id="q-poang" min="0" step="0.1" inputmode="decimal" enterkeyhint="done" placeholder="–"></div>
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
-        <label class="comp-toggle" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
+        <label class="comp-toggle" id="koptWrap" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
         <div style="margin-top:10px"><a href="#" id="moreToggle" style="font-size:12.5px;color:var(--forest)">+ avvikande skjutledare/anmärkning för denna post</a></div>
         <div id="moreFields" class="pass hide" style="margin-top:12px">
-          <div class="field"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
+          <div class="field" id="qLedareField"><label for="q-ledare">Skjutledare (denna post)</label><input type="text" id="q-ledare" list="leaderList"></div>
           <div class="field"><label for="q-anm">Anmärkning</label><input type="text" id="q-anm" placeholder="(valfritt)"></div>
         </div>
       </div>
@@ -888,7 +888,7 @@ function renderSkyttPicker(){
 /* ---------- quick add ---------- */
 async function quickAdd(){
   if(!(pass.ledare||"").trim()){
-    showBanner("warn","Ange <b>skjutledare</b> för dagens pass innan du registrerar skyttar – ansvarig krävs för en giltig journalpost.",4000);
+    showBanner("warn","Ange <b>skjutledare</b> för dagens pass innan du registrerar skyttar – krävs för en giltig journalpost.",4000);
     $("#p-ledare").focus(); return;
   }
   const skyttEl=$("#q-skytt");
@@ -960,7 +960,7 @@ function summaryRows(ye,y){
     [],["Hänvisningar","Förordning (1998:901) om egenkontroll · NFS 2005:15 (buller) · FAP 525-1 / SäkB"]);
   return r;
 }
-function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Betald","Poäng","Skjutledare/ansvarig","Tävling","Anmärkning","Kostnad (kr)"]; }
+function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Betald","Poäng","Skjutledare","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
     .map(e=>[e.datum,nameOf(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
@@ -1383,7 +1383,19 @@ async function enterApp(session){
   $("#restoreBtn").classList.toggle("hide", !isAdmin);
   $("#logoutBtn").classList.remove("hide");
   $("#userLabel").textContent = me + (isAdmin?" · admin":isRevisor?" · revisor":""); $("#userLabel").classList.remove("hide");
-  if(!(pass.ledare||"").trim()){ pass.ledare=me; savePass(); }
+  // Medlem får en minimal loggvy: inget Dagens pass-kort, ingen köpt skott,
+  // ingen avvikande skjutledare – datum=idag, skjutledaren är de själva.
+  const fullLog = isAdmin||isRevisor;
+  $("#passCard").classList.toggle("hide", !fullLog);
+  $("#koptWrap").classList.toggle("hide", !fullLog);
+  $("#qLedareField").classList.toggle("hide", !fullLog);
+  $("#moreToggle").textContent = fullLog ? "+ avvikande skjutledare/anmärkning för denna post" : "+ anmärkning för denna post";
+  if(fullLog){
+    if(!(pass.ledare||"").trim()) pass.ledare=me;
+  }else{
+    pass.datum=today(); pass.ledare=me; pass.tavling=false; pass.tavlingNamn="";
+  }
+  savePass();
   applyPassToForm();
   await loadDirectory(); renderSkyttPicker(); await loadAll(); renderAll();
   { const s=$("#q-skytt"); if(s&&s.tagName==="SELECT") s.focus(); else $("#q-skott").focus(); }
