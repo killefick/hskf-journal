@@ -223,6 +223,7 @@ create view public.member_directory
   with (security_invoker = off) as
   select id, full_name from public.profiles;
 
+revoke select on public.member_directory from anon;
 grant select on public.member_directory to authenticated;
 ````
 
@@ -240,11 +241,14 @@ alter table public.profiles
 
 -- member_directory must expose `active` so the client can filter the logging
 -- picker to active members while still resolving names for inactive ones.
+-- NOTE: Supabase's "Security Definer View" linter warning on this view is
+-- expected — the RLS bypass is intentional and it exposes only id/full_name/active.
 drop view if exists public.member_directory;
 create view public.member_directory
   with (security_invoker = off) as
   select id, full_name, active from public.profiles;
 
+revoke select on public.member_directory from anon;
 grant select on public.member_directory to authenticated;
 ```
 
