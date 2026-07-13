@@ -297,7 +297,7 @@
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
         <div style="margin-top:20px"><div class="label" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">Skott &amp; kostnad per skytt <button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button></div>
-          <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Att betala</th><th></th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
+          <div class="tbl-scroll"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Utestående</th><th></th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
           <p class="hint" id="priceHint" style="margin:8px 2px 0"></p>
         </div>
       </div>
@@ -433,7 +433,7 @@ const ORG = {
 /* Pris per skott i kronor. Kostnad per skytt = antal skott × pris. */
 const PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.78";
+const APP_VERSION = "v.79";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -999,7 +999,7 @@ $("#exportCsv").addEventListener("click",()=>{
   const pay=hasPrices?payRows(ye):[];
   const payTot=Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100;
   const paidTot=Math.round(ye.reduce((s,e)=>s+rowPaid(e),0)*100)/100;
-  const payBlock=pay.length?[[],["ATT BETALA "+y+" – pris per köpt skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Köpta skott","Att betala (kr)","Betalt (kr)"],...pay,["Totalt:","",payTot,paidTot]]:[];
+  const payBlock=pay.length?[[],["UTESTÅENDE "+y+" – pris per köpt skott: "+kr(PRIS_PER_SKOTT)],["Skytt","Köpta skott","Utestående (kr)","Betalt (kr)"],...pay,["Totalt:","",payTot,paidTot]]:[];
   const aoa=[...exportHeaderRows(y),logHeader(),...logRows(ye),
     [],["Totalt:","",ye.reduce((s,e)=>s+(+e.antal_skott||0),0)],
     ...summaryRows(ye,y),...compBlock,...payBlock];
@@ -1027,9 +1027,9 @@ $("#exportXlsx").addEventListener("click",()=>{
   if(pay.length){
     const payTot=Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100;
     const paidTot=Math.round(ye.reduce((s,e)=>s+rowPaid(e),0)*100)/100;
-    const ws4=XLSX.utils.aoa_to_sheet([["Att betala "+y],["Pris per köpt skott",PRIS_PER_SKOTT+" kr"],[],["Skytt","Köpta skott","Att betala (kr)","Betalt (kr)"],...pay,["Totalt:","",payTot,paidTot]]);
+    const ws4=XLSX.utils.aoa_to_sheet([["Utestående "+y],["Pris per köpt skott",PRIS_PER_SKOTT+" kr"],[],["Skytt","Köpta skott","Utestående (kr)","Betalt (kr)"],...pay,["Totalt:","",payTot,paidTot]]);
     ws4["!cols"]=[{wch:24},{wch:12},{wch:14},{wch:12}];
-    XLSX.utils.book_append_sheet(wb,ws4,"Att betala");
+    XLSX.utils.book_append_sheet(wb,ws4,"Utestående");
   }
   XLSX.writeFile(wb,`skjutjournal_${y}.xlsx`);
 });
