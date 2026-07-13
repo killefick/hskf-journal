@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Skjutjournal – Hillareds skytteförening</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 210mm; height: 297mm; }
+  body {
+    font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+    color: #23303b;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .band {
+    background: linear-gradient(160deg, #2079cc 0%, #155b9e 100%);
+    color: #f3ecdd;
+    padding: 14mm 18mm 12mm;
+    text-align: center;
+  }
+  .band .club {
+    font-size: 13pt;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    opacity: .92;
+  }
+  .band h1 {
+    font-size: 34pt;
+    font-weight: 700;
+    margin-top: 3mm;
+    letter-spacing: .5px;
+  }
+  .band .sub {
+    font-size: 13.5pt;
+    margin-top: 3mm;
+    opacity: .92;
+  }
+  .qr-wrap {
+    text-align: center;
+    padding: 10mm 0 0;
+  }
+  .qr-wrap svg {
+    width: 72mm;
+    height: 72mm;
+    display: inline-block;
+    border: 1.2mm solid #155b9e;
+    border-radius: 4mm;
+    padding: 4mm;
+    background: #fff;
+  }
+  .url {
+    text-align: center;
+    font-size: 26pt;
+    font-weight: 700;
+    color: #155b9e;
+    margin-top: 4mm;
+    letter-spacing: 1px;
+  }
+  .steps {
+    padding: 8mm 24mm 0;
+  }
+  .steps h2 {
+    font-size: 15pt;
+    color: #155b9e;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 4mm;
+  }
+  .steps ol { list-style: none; counter-reset: steg; }
+  .steps li {
+    counter-increment: steg;
+    display: flex;
+    align-items: baseline;
+    gap: 4mm;
+    font-size: 12.5pt;
+    line-height: 1.45;
+    margin-bottom: 3.2mm;
+  }
+  .steps li::before {
+    content: counter(steg);
+    flex: 0 0 8mm;
+    height: 8mm;
+    line-height: 8mm;
+    text-align: center;
+    background: #2079cc;
+    color: #f3ecdd;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 12pt;
+    align-self: center;
+  }
+  .steps b { color: #155b9e; }
+  .notes {
+    margin: auto 18mm 0;
+    background: #f3ecdd;
+    border-radius: 3mm;
+    padding: 5mm 7mm;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+  .notes p + p { margin-top: 1.5mm; }
+  .notes .ico { display: inline-block; width: 5mm; color: #b1542a; font-weight: 700; }
+  .footer {
+    text-align: center;
+    font-size: 9pt;
+    color: #6b7885;
+    padding: 4mm 0 6mm;
+  }
+</style>
+</head>
+<body>
+
+  <div class="band">
+    <div class="club">Hillareds skytteförening</div>
+    <h1>Digital skjutjournal</h1>
+    <div class="sub">Registrera ditt skytte direkt i mobilen – varje gång du skjuter</div>
+  </div>
+
+  <div class="qr-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h33v33H0z"/><path stroke="#000000" d="M4 4.5h7m2 0h3m1 0h1m2 0h1m1 0h7M4 5.5h1m5 0h1m1 0h1m5 0h3m1 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m2 0h1m1 0h4m1 0h1m1 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m2 0h2m1 0h4m2 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m3 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m2 0h1m1 0h3m4 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 11.5h3m1 0h2m1 0h1M4 12.5h1m1 0h1m1 0h1m1 0h1m3 0h1m3 0h3m3 0h1m2 0h1M7 13.5h1m1 0h1m4 0h1m3 0h2m2 0h1m5 0h1M4 14.5h1m2 0h6m2 0h1m1 0h1m4 0h1m1 0h1m1 0h3M4 15.5h3m5 0h1m3 0h1m2 0h2m1 0h3m2 0h1M4 16.5h1m2 0h1m2 0h1m3 0h1m1 0h1m3 0h3m2 0h1m1 0h2M6 17.5h3m5 0h4m2 0h3m2 0h1m2 0h1M4 18.5h1m2 0h1m1 0h3m3 0h2m1 0h1m4 0h1m2 0h3M5 19.5h2m2 0h1m1 0h2m3 0h3m3 0h1m1 0h1m2 0h1M4 20.5h1m1 0h1m3 0h2m1 0h3m2 0h1m1 0h6M12 21.5h2m1 0h1m2 0h1m1 0h1m3 0h2m1 0h2M4 22.5h7m6 0h1m1 0h2m1 0h1m1 0h2m1 0h2M4 23.5h1m5 0h1m4 0h1m4 0h1m3 0h2m2 0h1M4 24.5h1m1 0h3m1 0h1m1 0h1m3 0h1m3 0h6m1 0h1M4 25.5h1m1 0h3m1 0h1m3 0h4m1 0h2m2 0h5M4 26.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m4 0h1m3 0h1M4 27.5h1m5 0h1m3 0h1m1 0h5m3 0h2m1 0h1M4 28.5h7m1 0h1m2 0h1m2 0h1m1 0h1m2 0h1m3 0h2"/></svg>
+</div>
+  <div class="url">hskf.se</div>
+
+  <div class="steps">
+    <h2>Så här gör du</h2>
+    <ol>
+      <li><span><b>Skanna QR-koden</b> med mobilens kamera – eller surfa till <b>hskf.se</b>.</span></li>
+      <li><span><b>Logga in</b> med din e-postadress och ditt lösenord.</span></li>
+      <li><span>Fyll i <b>Dagens pass</b>: datum och skjutledare.</span></li>
+      <li><span><b>Registrera ditt skytte</b>: antal skott – och poäng om det är tävling.</span></li>
+      <li><span>Köpt ammunition av föreningen? Kryssa i <b>”Köpt skott”</b> så faktureras det två gånger per år.</span></li>
+    </ol>
+  </div>
+
+  <div class="notes">
+    <p><span class="ico">•</span><b>Tips:</b> Lägg till sidan på hemskärmen så fungerar journalen som en app.</p>
+    <p><span class="ico">•</span><b>Glömt lösenordet?</b> Fyll i din e-post på inloggningssidan och tryck på ”Glömt lösenord?”.</p>
+    <p><span class="ico">•</span><b>Saknar du inloggning?</b> Kontakta styrelsen så skickar vi en inbjudan via e-post.</p>
+  </div>
+
+  <div class="footer">Hillareds skytteförening · org.nr 865000-4503 · hskf.se</div>
+
+</body>
+</html>
