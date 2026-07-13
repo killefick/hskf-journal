@@ -430,7 +430,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.82";
+const APP_VERSION = "v.83";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
@@ -741,7 +741,7 @@ function renderAdmin(){
   // Admin redigerar priset direkt här; nya poster fryser priset vid registrering.
   if(isAdmin){
     $("#priceHint").innerHTML=`Pris per köpt skott:
-      <input type="number" id="prisInput" min="0" step="0.5" value="${+PRIS_PER_SKOTT||0}"
+      <input type="number" id="prisInput" min="0" step="1" value="${+PRIS_PER_SKOTT||0}"
         style="width:72px;padding:3px 6px;margin:0 4px"> kr
       <span class="hint">(gäller poster som registreras från och med nu)</span>`;
     $("#prisInput").addEventListener("change",e=>{ const v=+e.target.value; if(v>=0) savePrice(v); });
