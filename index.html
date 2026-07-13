@@ -55,6 +55,7 @@
   .icon-btn{background:transparent;border:1px solid rgba(243,236,221,.4);color:#f3ecdd;border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;font-size:13px}
   .icon-btn:hover{background:rgba(243,236,221,.12)}
   .icon-btn.solid{background:#f3ecdd;color:var(--forest-d);border-color:#f3ecdd}
+  .icon-btn.solid:hover{background:#e4d9bf;border-color:#e4d9bf}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
   .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
@@ -196,8 +197,8 @@
     </div>
     <div class="mast-actions">
       <span id="userLabel" class="hide" style="align-self:center;color:#c2d7ea;font-size:12.5px;font-weight:600;margin-right:2px"></span>
-      <button class="icon-btn solid hide" id="adminBtn">🔒 Admin &amp; analys</button>
-      <button class="icon-btn hide" id="logBtn">← Till inmatning</button>
+      <button class="icon-btn solid hide" id="adminBtn">🔒 Admin</button>
+      <button class="icon-btn hide" id="logBtn">← Tillbaka</button>
       <button class="icon-btn hide" id="logoutBtn">Logga ut</button>
     </div>
   </div>
@@ -430,7 +431,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.83";
+const APP_VERSION = "v.84";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 const TAVLINGAR = [
