@@ -2,8 +2,8 @@ name: Supabase keep-alive
 
 # Free-tier Supabase pauses projects without "sufficient user database activity
 # over the past week" — their docs say "a few user requests each day". One ping
-# per day proved too little: the project paused again 2026-07-20 despite six
-# consecutive green daily runs, so we ping four times a day now.
+# per day proved too little: Supabase sent an inactivity warning 2026-07-20
+# despite six consecutive green daily runs, so we ping four times a day now.
 # The anon key is the same publishable key committed in index.html (safe with RLS).
 on:
   schedule:
