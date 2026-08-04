@@ -29,8 +29,11 @@ self.addEventListener("fetch", e=>{
   const url=new URL(req.url);
   if(url.origin!==location.origin) return;            // CDN / Supabase -> nätet
   if(req.mode==="navigate"){
+    // Cacha bara appskalet som "./index.html" – andra sidor (t.ex. guide.html)
+    // får inte skriva över det, annars serverar offline-fallbacken fel sida.
+    const isApp = url.pathname==="/" || url.pathname.endsWith("/index.html");
     e.respondWith(
-      fetch(req).then(r=>{ const cp=r.clone(); caches.open(CACHE).then(c=>c.put("./index.html",cp)); return r; })
+      fetch(req).then(r=>{ if(isApp){ const cp=r.clone(); caches.open(CACHE).then(c=>c.put("./index.html",cp)); } return r; })
                 .catch(()=>caches.match("./index.html"))
     );
     return;
