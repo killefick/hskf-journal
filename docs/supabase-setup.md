@@ -78,6 +78,10 @@ landar i appen. Två manuella inställningar krävs i Supabase-dashboarden.
 
 ### 6a. Svensk mall för inbjudan
 
+> **2026-08-04:** mallen nedan uppdaterad med länk till guiden
+> (https://hskf.se/guide.html). Klistra in den nya brödtexten i dashboarden
+> (Authentication → Email Templates → "Invite user" resp. "Reset Password").
+
 Authentication -> Email Templates -> "Invite user". Sätt ämne och brödtext, och
 behåll variabeln `{{ .ConfirmationURL }}` som länk:
 
@@ -91,7 +95,9 @@ behåll variabeln `{{ .ConfirmationURL }}` som länk:
     <p>Ett konto har skapats åt dig i föreningens digitala skjutjournal.</p>
     <p>Klicka på länken nedan för att välja ett lösenord och logga in:</p>
     <p><a href="{{ .ConfirmationURL }}">Välj lösenord och logga in</a></p>
-    <p>När du har loggat in kan du registrera dina skjuttillfällen och se din statistik.</p>
+    <p>När du har loggat in kan du registrera dina skjutna skott.</p>
+    <p>En guide som visar hur du kommer igång finns på
+    <a href="https://hskf.se/guide.html">hskf.se/guide.html</a>.</p>
     <p>Om du inte väntade dig det här mejlet kan du bortse från det.</p>
 
 Inbjudningslänken returnerar till samma adress som lösenordsåterställningen
@@ -113,6 +119,7 @@ och behåll variabeln `{{ .ConfirmationURL }}` som länk:
     Hillareds skytteförenings skjutjournal.</p>
     <p>Klicka på länken nedan för att välja ett nytt lösenord:</p>
     <p><a href="{{ .ConfirmationURL }}">Välj nytt lösenord</a></p>
+    <p>Guide: <a href="https://hskf.se/guide.html">hskf.se/guide.html</a></p>
     <p>Om du inte begärde en återställning kan du bortse från det här mejlet –
     ditt lösenord ändras inte.</p>
 
