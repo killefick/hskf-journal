@@ -218,7 +218,7 @@
         <div class="field" style="margin-bottom:13px"><label for="authPass">Lösenord</label><input type="password" id="authPass" autocomplete="current-password"></div>
         <div id="authErr" style="color:var(--rust-d);font-size:13px;min-height:18px;margin-bottom:8px"></div>
         <button class="btn primary big" id="loginBtn" style="width:100%">Logga in</button>
-        <div style="text-align:center;margin-top:12px"><a href="#" id="forgotLink" style="font-size:13px;color:var(--forest)">Glömt lösenord?</a></div>
+        <div style="text-align:center;margin-top:12px"><a href="#" id="forgotLink" style="font-size:13px;color:var(--forest)">Glömt lösenord?</a> <span style="color:var(--line)">·</span> <a href="guide.html" style="font-size:13px;color:var(--forest)">Hjälp</a></div>
       </div>
     </div>
   </div>
@@ -336,6 +336,7 @@
 
   <footer>
     Underlag för egenkontroll (förordning 1998:901) och bullerbedömning (NFS 2005:15).
+    <br><a href="guide.html" style="color:var(--forest)">Hjälp – kom igång med journalen</a>
     <br><span id="appVer" class="hint"></span>
   </footer>
 </div>
@@ -432,7 +433,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.91";
+const APP_VERSION = "v.92";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
