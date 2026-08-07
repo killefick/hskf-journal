@@ -83,7 +83,8 @@ landar i appen. Två manuella inställningar krävs i Supabase-dashboarden.
 > (Authentication → Email Templates → "Invite user" resp. "Reset Password").
 >
 > **2026-08-07:** invite-mallen uppdaterad med SMS-fallback för rapportering
-> (073-075 74 93). Klistra in den nya brödtexten i dashboarden igen.
+> (073-075 74 93) och info om att skjutledaren registrerar vid tävlingar och
+> planlagd övningsskytte. Klistra in den nya brödtexten i dashboarden igen.
 
 Authentication -> Email Templates -> "Invite user". Sätt ämne och brödtext, och
 behåll variabeln `{{ .ConfirmationURL }}` som länk:
@@ -99,6 +100,9 @@ behåll variabeln `{{ .ConfirmationURL }}` som länk:
     <p>Klicka på länken nedan för att välja ett lösenord och logga in:</p>
     <p><a href="{{ .ConfirmationURL }}">Välj lösenord och logga in</a></p>
     <p>När du har loggat in kan du registrera dina skjutna skott.</p>
+    <p>På tävlingar och planlagd övningsskytte är det skjutledaren som
+    registrerar allt skytte och eventuellt köpta skott – då behöver du inte
+    registrera något själv.</p>
     <p>En guide som visar hur du kommer igång finns på
     <a href="https://hskf.se/guide.html">hskf.se/guide.html</a>.</p>
     <p>Problem med rapporteringen? SMS:a ditt namn och antal skott till
