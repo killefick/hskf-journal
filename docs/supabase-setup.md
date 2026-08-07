@@ -81,6 +81,9 @@ landar i appen. Två manuella inställningar krävs i Supabase-dashboarden.
 > **2026-08-04:** mallen nedan uppdaterad med länk till guiden
 > (https://hskf.se/guide.html). Klistra in den nya brödtexten i dashboarden
 > (Authentication → Email Templates → "Invite user" resp. "Reset Password").
+>
+> **2026-08-07:** invite-mallen uppdaterad med SMS-fallback för rapportering
+> (073-075 74 93). Klistra in den nya brödtexten i dashboarden igen.
 
 Authentication -> Email Templates -> "Invite user". Sätt ämne och brödtext, och
 behåll variabeln `{{ .ConfirmationURL }}` som länk:
@@ -98,6 +101,8 @@ behåll variabeln `{{ .ConfirmationURL }}` som länk:
     <p>När du har loggat in kan du registrera dina skjutna skott.</p>
     <p>En guide som visar hur du kommer igång finns på
     <a href="https://hskf.se/guide.html">hskf.se/guide.html</a>.</p>
+    <p>Problem med rapporteringen? SMS:a ditt namn och antal skott till
+    073-075 74 93, så registrerar vi åt dig.</p>
     <p>Om du inte väntade dig det här mejlet kan du bortse från det.</p>
 
 Inbjudningslänken returnerar till samma adress som lösenordsåterställningen
