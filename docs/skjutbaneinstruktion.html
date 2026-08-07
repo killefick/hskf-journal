@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Skjutbaneinstruktion – Hillareds skytteförening</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 210mm; height: 297mm; }
+  body {
+    font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+    color: #23303b;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .band {
+    background: linear-gradient(160deg, #2079cc 0%, #155b9e 100%);
+    color: #f3ecdd;
+    padding: 12mm 18mm 10mm;
+    text-align: center;
+  }
+  .band .club {
+    font-size: 13pt;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    opacity: .92;
+  }
+  .band h1 {
+    font-size: 30pt;
+    font-weight: 700;
+    margin-top: 3mm;
+    letter-spacing: .5px;
+  }
+  .band .sub {
+    font-size: 12pt;
+    margin-top: 3mm;
+    opacity: .92;
+  }
+  .rules {
+    padding: 9mm 22mm 0;
+  }
+  .rules ol { list-style: none; counter-reset: regel; }
+  .rules li {
+    counter-increment: regel;
+    display: flex;
+    align-items: baseline;
+    gap: 4mm;
+    font-size: 12pt;
+    line-height: 1.45;
+    margin-bottom: 3.6mm;
+  }
+  .rules li::before {
+    content: counter(regel);
+    flex: 0 0 8mm;
+    height: 8mm;
+    line-height: 8mm;
+    text-align: center;
+    background: #2079cc;
+    color: #f3ecdd;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 12pt;
+    align-self: center;
+  }
+  .rules b { color: #155b9e; }
+  .notes {
+    margin: auto 18mm 0;
+    background: #f3ecdd;
+    border-radius: 3mm;
+    padding: 5mm 7mm;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+  .notes p + p { margin-top: 1.5mm; }
+  .notes .ico { display: inline-block; width: 5mm; color: #b1542a; font-weight: 700; }
+  .footer {
+    text-align: center;
+    font-size: 9pt;
+    color: #6b7885;
+    padding: 4mm 0 6mm;
+  }
+</style>
+</head>
+<body>
+
+  <div class="band">
+    <div class="club">Hillareds skytteförening</div>
+    <h1>Skjutbaneinstruktion</h1>
+    <div class="sub">Fastställd av styrelsen · 2026</div>
+  </div>
+
+  <div class="rules">
+    <ol>
+      <li><span>Skjutbanan ägs av <b>Hillareds skytteförening</b>.</span></li>
+      <li><span>Ansvarig styrelseledamot är <b>Bertil Hagström</b>, mobil <b>070-603 98 01</b>.</span></li>
+      <li><span>Skjutbanechef är <b>Bertil Hagström</b>.</span></li>
+      <li><span>Endast medlemmar i Hillareds skytteförening har rätt att vistas på banan. Övriga skyttar endast enligt överenskommelse med skjutbanechefen, och då på egen risk och eget ansvar.</span></li>
+      <li><span>Tillåtna <b>skjuttider</b> är enligt anslaget skjutprogram (finns på skjutbodens fönster). Övrig tid enligt överenskommelse med skjutbanechefen. Ingen skjutning får ske från 200 eller 300 meter när verksamhet pågår på fotbollsplanen.</span></li>
+      <li><span>Vid skjutning ska <b>varningsbommarna</b> (2 st) fällas. Vid skjutning från 300 meter ska dessutom <b>stoppskylt</b> placeras ut vid 300-metersvallen.</span></li>
+      <li><span>Tillåtna <b>vapen</b> är kulgevär klass 1–4 samt k-pist.</span></li>
+      <li><span><b>Skjutledare</b> ska utses när två eller flera skjuter samtidigt. Ensam skytt har själv skjutledaransvar.</span></li>
+      <li><span><b>Sjukvårdsmateriel</b> finns i skjutboden (300-metersvallen).</span></li>
+      <li><span>Skjutledare ska ha <b>samband</b> via komradio eller mobiltelefon.</span></li>
+      <li><span>Tillåtna <b>mål och målplaceringar</b> är tavlor placerade i tavelställen.</span></li>
+    </ol>
+  </div>
+
+  <div class="notes">
+    <p><span class="ico">•</span><b>Glöm inte skjutjournalen!</b> Registrera ditt skytte på <b>hskf.se</b> varje gång du skjuter.</p>
+    <p><span class="ico">•</span><b>Frågor om banan?</b> Kontakta skjutbanechefen på numret ovan.</p>
+  </div>
+
+  <div class="footer">Hillareds skytteförening · Styrelsen · org.nr 865000-4503 · hskf.se</div>
+
+</body>
+</html>
