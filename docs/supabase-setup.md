@@ -84,7 +84,8 @@ landar i appen. Två manuella inställningar krävs i Supabase-dashboarden.
 >
 > **2026-08-07:** invite-mallen uppdaterad med SMS-fallback för rapportering
 > (073-075 74 93) och info om att skjutledaren registrerar vid tävlingar och
-> planlagd övningsskytte. Klistra in den nya brödtexten i dashboarden igen.
+> planlagd övningsskytte (skjutledarinfon även i reset-mallen). Klistra in de
+> nya brödtexterna i dashboarden igen.
 
 Authentication -> Email Templates -> "Invite user". Sätt ämne och brödtext, och
 behåll variabeln `{{ .ConfirmationURL }}` som länk:
@@ -128,6 +129,9 @@ och behåll variabeln `{{ .ConfirmationURL }}` som länk:
     Hillareds skytteförenings skjutjournal.</p>
     <p>Klicka på länken nedan för att välja ett nytt lösenord:</p>
     <p><a href="{{ .ConfirmationURL }}">Välj nytt lösenord</a></p>
+    <p>På tävlingar och planlagd övningsskytte är det skjutledaren som
+    registrerar allt skytte och eventuellt köpta skott – då behöver du inte
+    registrera något själv.</p>
     <p>Guide: <a href="https://hskf.se/guide.html">hskf.se/guide.html</a></p>
     <p>Om du inte begärde en återställning kan du bortse från det här mejlet –
     ditt lösenord ändras inte.</p>
