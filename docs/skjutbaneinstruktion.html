@@ -92,18 +92,57 @@
   }
   .dot.green { background: #2e8b46; }
   .dot.red { background: #c0392b; }
-  .notes {
-    margin: 6mm 12mm 0;
+  .col.qr {
+    flex: 0.95;
     background: #f3ecdd;
-    border-radius: 3mm;
-    padding: 4mm 7mm;
-    font-size: 10.5pt;
-    line-height: 1.55;
-    display: flex;
-    gap: 10mm;
-    justify-content: center;
+    border-color: #e2d7bd;
+    text-align: center;
   }
-  .notes .ico { display: inline-block; width: 5mm; color: #b1542a; font-weight: 700; }
+  .col.qr h2 { border-bottom-color: #b1542a; }
+  .col.qr svg {
+    width: 52mm;
+    height: 52mm;
+    border: 1mm solid #155b9e;
+    border-radius: 3mm;
+    padding: 3mm;
+    background: #fff;
+    margin-top: 2mm;
+  }
+  .col.qr .url {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #155b9e;
+    letter-spacing: 1px;
+    margin: 2mm 0 4mm;
+  }
+  .col.qr .steps {
+    text-align: left;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    margin-bottom: 4mm;
+  }
+  .col.qr .steps p { margin-bottom: 1.5mm; }
+  .col.qr .steps .n {
+    display: inline-block;
+    width: 6mm; height: 6mm;
+    line-height: 6mm;
+    text-align: center;
+    background: #2079cc;
+    color: #f3ecdd;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 9.5pt;
+    margin-right: 2mm;
+  }
+  .col.qr .help {
+    text-align: left;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    border-top: 0.4mm solid #e2d7bd;
+    padding-top: 3mm;
+  }
+  .col.qr .help p + p { margin-top: 1.5mm; }
+  .col.qr .help .ico { display: inline-block; width: 4mm; color: #b1542a; font-weight: 700; }
   .footer {
     text-align: center;
     font-size: 9.5pt;
@@ -131,7 +170,7 @@
         <li><span>Endast medlemmar i Hillareds skytteförening har rätt att vistas på banan. Övriga skyttar endast enligt överenskommelse med skjutbanechefen, och då på egen risk och eget ansvar.</span></li>
         <li><span>Tillåtna <b>skjuttider</b> är enligt anslaget skjutprogram (finns i skjutboden). Övrig tid enligt överenskommelse med skjutbanechefen. Ingen skjutning får ske från 200 eller 300 meter när verksamhet pågår på fotbollsplanen.</span></li>
         <li><span>Vid skjutning ska <b>varningsanordningarna</b> för aktuell skjutplats användas – se instruktionen för respektive skjutplats här intill.</span></li>
-        <li><span>Tillåtna <b>vapen</b> är kulgevär klass 1–4 samt k-pist.</span></li>
+        <li><span>Tillåtna <b>vapen</b> är kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
         <li><span><b>Skjutledare</b> ska utses när två eller flera skjuter samtidigt. Ensam skytt har själv skjutledaransvar.</span></li>
         <li><span><b>Sjukvårdsmateriel</b> finns i skjutboden (300-metersvallen).</span></li>
         <li><span>Skjutledare ska ha <b>samband</b> via komradio eller mobiltelefon.</span></li>
@@ -150,7 +189,7 @@
         <li><span><b>Mål</b> får endast placeras på därför avsedd plats.</span></li>
         <li><span><b>Olycksfallsberedskap:</b> Sjukvårdsmateriel ska finnas i skjutboden och mobiltelefon ska finnas på plats. Skjutledaren ansvarar för att detta finns.</span></li>
         <li><span>Respektera våra <b>skjuttider</b> enligt gällande skjutprogram, som finns i skjutboden.</span></li>
-        <li><span><b>Tillåtna vapen:</b> kaliber 6,5–9 mm.</span></li>
+        <li><span><b>Tillåtna vapen:</b> kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
       </ol>
     </div>
 
@@ -165,15 +204,27 @@
         <li><span><b>Mål</b> får endast placeras på därför avsedd plats.</span></li>
         <li><span><b>Olycksfallsberedskap:</b> Sjukvårdsmateriel ska finnas i skjutboden och mobiltelefon ska finnas på plats. Skjutledaren ansvarar för att detta finns.</span></li>
         <li><span>Respektera våra <b>skjuttider</b> enligt gällande skjutprogram, som finns i skjutboden.</span></li>
-        <li><span><b>Tillåtna vapen:</b> kaliber 6,5–9 mm.</span></li>
+        <li><span><b>Tillåtna vapen:</b> kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
       </ol>
     </div>
 
-  </div>
+    <div class="col qr">
+      <h2>Digital skjutjournal</h2>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h33v33H0z"/><path stroke="#000000" d="M4 4.5h7m2 0h3m1 0h1m2 0h1m1 0h7M4 5.5h1m5 0h1m1 0h1m5 0h3m1 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m2 0h1m1 0h4m1 0h1m1 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m2 0h2m1 0h4m2 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m3 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m2 0h1m1 0h3m4 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 11.5h3m1 0h2m1 0h1M4 12.5h1m1 0h1m1 0h1m1 0h1m3 0h1m3 0h3m3 0h1m2 0h1M7 13.5h1m1 0h1m4 0h1m3 0h2m2 0h1m5 0h1M4 14.5h1m2 0h6m2 0h1m1 0h1m4 0h1m1 0h1m1 0h3M4 15.5h3m5 0h1m3 0h1m2 0h2m1 0h3m2 0h1M4 16.5h1m2 0h1m2 0h1m3 0h1m1 0h1m3 0h3m2 0h1m1 0h2M6 17.5h3m5 0h4m2 0h3m2 0h1m2 0h1M4 18.5h1m2 0h1m1 0h3m3 0h2m1 0h1m4 0h1m2 0h3M5 19.5h2m2 0h1m1 0h2m3 0h3m3 0h1m1 0h1m2 0h1M4 20.5h1m1 0h1m3 0h2m1 0h3m2 0h1m1 0h6M12 21.5h2m1 0h1m2 0h1m1 0h1m3 0h2m1 0h2M4 22.5h7m6 0h1m1 0h2m1 0h1m1 0h2m1 0h2M4 23.5h1m5 0h1m4 0h1m4 0h1m3 0h2m2 0h1M4 24.5h1m1 0h3m1 0h1m1 0h1m3 0h1m3 0h6m1 0h1M4 25.5h1m1 0h3m1 0h1m3 0h4m1 0h2m2 0h5M4 26.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m4 0h1m3 0h1M4 27.5h1m5 0h1m3 0h1m1 0h5m3 0h2m1 0h1M4 28.5h7m1 0h1m2 0h1m2 0h1m1 0h1m2 0h1m3 0h2"/></svg>
+      <div class="url">hskf.se</div>
+      <div class="steps">
+        <p><span class="n">1</span><b>Skanna QR-koden</b> med mobilens kamera – eller surfa till <b>hskf.se</b>.</p>
+        <p><span class="n">2</span><b>Logga in</b> med din e-postadress och ditt lösenord.</p>
+        <p><span class="n">3</span><b>Registrera</b> antal skjutna skott – varje gång du skjuter.</p>
+      </div>
+      <div class="help">
+        <p><span class="ico">•</span><b>Glömt lösenordet?</b> Fyll i din e-post på inloggningssidan och tryck på ”Glömt lösenord?”.</p>
+        <p><span class="ico">•</span><b>Saknar du inloggning?</b> Kontakta <b>073-075 74 93</b> så skickar vi en inbjudan via e-post.</p>
+        <p><span class="ico">•</span><b>Problem med rapporteringen?</b> SMS:a ditt namn och antal skott till <b>073-075 74 93</b>.</p>
+        <p><span class="ico">•</span><b>Frågor om banan?</b> Kontakta skjutbanechefen – nummer i punkt 2 under Allmänna regler.</p>
+      </div>
+    </div>
 
-  <div class="notes">
-    <p><span class="ico">•</span><b>Glöm inte skjutjournalen!</b> Registrera ditt skytte på <b>hskf.se</b> varje gång du skjuter.</p>
-    <p><span class="ico">•</span><b>Frågor om banan?</b> Kontakta skjutbanechefen på numret i punkt 2.</p>
   </div>
 
   <div class="footer">Hillareds skytteförening · Styrelsen · org.nr 865000-4503 · hskf.se</div>
