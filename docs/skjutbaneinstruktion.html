@@ -48,8 +48,68 @@
     border: 0.5mm solid #d8dee5;
     border-radius: 3mm;
     padding: 6mm 7mm;
+    display: flex;
+    flex-direction: column;
   }
   .col.main { flex: 1.25; }
+  .check {
+    margin-top: auto;
+    border: 0.6mm solid #2079cc;
+    border-radius: 3mm;
+    background: #eef5fc;
+    padding: 4mm 5mm;
+  }
+  .check h3 {
+    font-size: 11pt;
+    color: #155b9e;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 2mm;
+  }
+  .check ul {
+    list-style: none;
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+  .check ul li { margin-bottom: 1mm; padding-left: 6mm; text-indent: -6mm; }
+  .check ul li::before { content: "☐"; margin-right: 2mm; color: #155b9e; }
+  .alarm {
+    margin-top: auto;
+    border: 1mm solid #c0392b;
+    border-radius: 3mm;
+    background: #fdf1ef;
+    padding: 4mm 5mm;
+    text-align: center;
+  }
+  .alarm h3 {
+    font-size: 12pt;
+    color: #c0392b;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 2mm;
+  }
+  .alarm .ring {
+    font-size: 26pt;
+    font-weight: 700;
+    color: #c0392b;
+    line-height: 1.1;
+    margin-bottom: 2.5mm;
+  }
+  .alarm ul {
+    list-style: none;
+    text-align: left;
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+  .alarm ul li { margin-bottom: 1mm; }
+  .alarm ul b { color: #c0392b; }
+  .alarm .plats {
+    font-size: 9.5pt;
+    margin-top: 1.5mm;
+    padding-top: 2mm;
+    border-top: 0.4mm solid #eac6bf;
+    text-align: left;
+  }
   .col h2 {
     font-size: 14pt;
     color: #155b9e;
@@ -60,10 +120,11 @@
     border-bottom: 0.6mm solid #2079cc;
     text-wrap: balance;
   }
-  .col li span, .col .steps p, .col .help p { text-wrap: pretty; }
+  .col li span, .col .steps p, .col .help p,
+  .alarm ul li, .alarm .plats, .check ul li { text-wrap: pretty; }
   .nb { white-space: nowrap; }
   .col ol { list-style: none; counter-reset: regel; }
-  .col li {
+  .col ol > li {
     counter-increment: regel;
     display: flex;
     align-items: baseline;
@@ -72,7 +133,7 @@
     line-height: 1.45;
     margin-bottom: 2.8mm;
   }
-  .col li::before {
+  .col ol > li::before {
     content: counter(regel);
     flex: 0 0 6mm;
     height: 6mm;
@@ -176,7 +237,7 @@
         <li><span>Tillåtna <b>vapen</b> är kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
         <li><span><b>Skjutledare</b> ska utses när två eller flera skjuter samtidigt. Ensam skytt har själv skjutledaransvar.</span></li>
         <li><span><b>Sjukvårdsmateriel</b> finns i skjutboden <span class="nb">(300&#8209;metersvallen)</span>.</span></li>
-        <li><span>Skjutledaren ska ha <b>komradio eller mobiltelefon</b> för kontakt med markörgraven.</span></li>
+        <li><span>Skjutledaren ska ha <b>komradio eller mobiltelefon</b> för kontakt med markörgraven och för att kunna larma vid olycka.</span></li>
         <li><span>Tillåtna <b>mål och målplaceringar</b> är tavlor placerade i tavelställen.</span></li>
       </ol>
     </div>
@@ -194,6 +255,16 @@
         <li><span>Respektera våra <b>skjuttider</b> enligt gällande skjutprogram, som finns i skjutboden.</span></li>
         <li><span><b>Tillåtna vapen:</b> kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
       </ol>
+      <div class="check">
+        <h3>Skjutledarens säkerhetsgenomgång</h3>
+        <ul>
+          <li>Visa var <b>första förband</b> finns.</li>
+          <li>Kontrollera att fungerande <b>mobiltelefon</b> finns på plats.</li>
+          <li>Informera alla om banans <b>position</b> – se 112-rutan.</li>
+          <li>Kontrollera att alla bär <b>hörselskydd</b>.</li>
+          <li>Vid fara gäller kommandot <b>AVBRYT!</b></li>
+        </ul>
+      </div>
     </div>
 
     <div class="col">
@@ -209,6 +280,15 @@
         <li><span>Respektera våra <b>skjuttider</b> enligt gällande skjutprogram, som finns i skjutboden.</span></li>
         <li><span><b>Tillåtna vapen:</b> kulgevär klass 1–4 samt k-pist, kaliber upp till 9,3 mm.</span></li>
       </ol>
+      <div class="alarm">
+        <h3>Vid olycka</h3>
+        <div class="ring">Ring 112</div>
+        <ul>
+          <li><b>Avbryt</b> skjutningen omedelbart – kommando <b>AVBRYT!</b> Patron ur, säkra vapnen.</li>
+          <li>Ge <b>första hjälpen</b> – sjukvårdsmateriel finns i skjutboden.</li>
+        </ul>
+        <p class="plats"><b>Uppge position:</b> Hillareds skytteförenings skjutbana – 250 m sydost om Hillareds kyrka, öster om <span class="nb">väg 1679</span> mot Sexdrega/Svenljunga.</p>
+      </div>
     </div>
 
     <div class="col qr">
