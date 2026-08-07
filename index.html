@@ -56,6 +56,7 @@
   .icon-btn:hover{background:rgba(243,236,221,.12)}
   .icon-btn.solid{background:#f3ecdd;color:var(--forest-d);border-color:#f3ecdd}
   .icon-btn.solid:hover{background:#e4d9bf;border-color:#e4d9bf}
+  a.icon-btn{text-decoration:none;display:inline-flex;align-items:center}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
   .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
@@ -197,8 +198,9 @@
     </div>
     <div class="mast-actions">
       <span id="userLabel" class="hide" style="align-self:center;color:#c2d7ea;font-size:12.5px;font-weight:600;margin-right:2px"></span>
-      <button class="icon-btn solid hide" id="adminBtn">🔒 Admin</button>
+      <button class="icon-btn hide" id="adminBtn">Admin</button>
       <button class="icon-btn hide" id="logBtn">← Tillbaka</button>
+      <a class="icon-btn" href="guide.html">Hjälp</a>
       <button class="icon-btn hide" id="logoutBtn">Logga ut</button>
     </div>
   </div>
@@ -433,7 +435,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.92";
+const APP_VERSION = "v.93";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
