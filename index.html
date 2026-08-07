@@ -426,7 +426,7 @@ const ORG = {
   verksamhet:"Finkalibrigt skytte utomhus, kaliber upp till 9,3 mm",
   skjutplatser:"80, 100, 200 och 300 m",
   provningsniva:"Anmälningspliktig C-verksamhet (miljöprövningsförordningen 2013:251)",
-  skjutbaneansvarig:"Bertil Hagström",
+  skjutbanechef:"Bertil Hagström",
 };
 
 /* Pris per skott i kronor – standardvärde. Det delade priset läses från
@@ -434,7 +434,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.95";
+const APP_VERSION = "v.96";
 
 /* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
 /* "Övningsskjutning" står inte i listan – det är standard för alla poster
@@ -1031,7 +1031,7 @@ function summaryRows(ye,y){
     ["Utestående belopp (kr)",Math.round(ye.reduce((s,e)=>s+rowOutstanding(e),0)*100)/100],
     [],["Skott per månad"]];
   months.forEach((m,i)=>r.push([m,msum[i]]));
-  r.push([],["Sammanställt av skjutbaneansvarig",ORG.skjutbaneansvarig],
+  r.push([],["Sammanställt av skjutbanechef",ORG.skjutbanechef],
     ["Datum","______________"],["Underskrift","______________"],
     [],["Hänvisningar","Förordning (1998:901) om egenkontroll · NFS 2005:15 (buller) · FAP 525-1 / SäkB"]);
   return r;
