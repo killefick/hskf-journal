@@ -466,9 +466,26 @@ insert into public.app_settings (key, value) values ('tavlingar', $json$[
 Programmen ovan är seed-data — alla sex får samma program tills de riktiga
 skillnaderna fylls i under **Tävlingar → ✎ Redigera** i appen.
 
-Kör raden nedan för att kontrollera att inget annat läckt ut. Den ska ge noll
-rader (kör den utloggad, t.ex. med anon-nyckeln):
+### Kontrollera att inget annat läcker ut
+
+**SQL-editorn duger inte rakt av.** Den kör som superanvändare och förbigår RLS,
+så `select key from public.app_settings` listar alltid *alla* nycklar där –
+inklusive `pris_per_skott`. Det betyder inte att policyn är fel.
+
+Byt roll explicit för att se vad `anon` faktiskt kommer åt. Frågan ska ge
+**bara `tavlingar`**:
 
 ```sql
-select key from public.app_settings where key <> 'tavlingar';
+begin;
+set local role anon;
+select key from public.app_settings;
+rollback;
+```
+
+Eller testa utifrån, samma väg som en utloggad besökare (anon-nyckeln finns i
+`CONFIG` i `index.html`). Ska ge `[]`:
+
+```
+curl "https://<ref>.supabase.co/rest/v1/app_settings?select=key&key=eq.pris_per_skott" \
+  -H "apikey: <anon-nyckeln>"
 ```
