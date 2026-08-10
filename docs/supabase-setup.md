@@ -432,3 +432,43 @@ insert into public.app_settings (key, value) values ('pris_per_skott', '9')
 alter table public.skjuttillfallen add column if not exists pris numeric;
 update public.skjuttillfallen set pris = 9 where pris is null;
 ```
+
+## 15. Tävlingslathund (2026-08-10)
+
+Tävlingarna och deras program flyttar från konstanten `TAVLINGAR` i `index.html`
+till `app_settings` under nyckeln `tavlingar`. Samma lista driver både lathunden
+(vyn **Tävlingar**) och rullgardinen vid registrering, och admin redigerar den i
+appen.
+
+Lathunden ska gå att läsa **utan inloggning**. `app_settings` är annars helt dold
+för `anon` (avsnitt 14) — policyn nedan släpper igenom enbart nyckeln
+`tavlingar`. RLS filtrerar rad för rad, så `pris_per_skott` förblir osynlig
+utloggad trots `grant select`. Skrivpolicyn (`is_admin()`) är oförändrad.
+
+```sql
+grant select on public.app_settings to anon;
+
+drop policy if exists "read_public" on public.app_settings;
+create policy "read_public" on public.app_settings for select to anon
+  using (key = 'tavlingar');
+
+insert into public.app_settings (key, value) values ('tavlingar', $json$[
+  {"namn":"FSR Propagandatävlan",           "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
+  {"namn":"Vårpokalen",                     "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
+  {"namn":"D. von Schedvins vandringspris", "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
+  {"namn":"Korporationsskjutning",          "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
+  {"namn":"Höstpokalen",                    "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
+  {"namn":"Föreningsmästerskap",            "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]}
+]$json$::jsonb)
+  on conflict (key) do nothing;
+```
+
+Programmen ovan är seed-data — alla sex får samma program tills de riktiga
+skillnaderna fylls i under **Tävlingar → ✎ Redigera** i appen.
+
+Kör raden nedan för att kontrollera att inget annat läckt ut. Den ska ge noll
+rader (kör den utloggad, t.ex. med anon-nyckeln):
+
+```sql
+select key from public.app_settings where key <> 'tavlingar';
+```

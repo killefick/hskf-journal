@@ -98,6 +98,33 @@
   .comp-group{margin-bottom:18px}
   .comp-group h3{margin-left:12px}
   .comp-win{font-weight:700}
+  /* tävlingslathund */
+  .cg-head-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .cg-lead{margin:0 0 15px;font-size:13px;color:var(--ink-soft)}
+  .cg-item{border:1px solid var(--line-2);border-radius:12px;margin-bottom:11px;background:#fbfdff}
+  .cg-item summary{cursor:pointer;list-style:none;padding:12px 16px;font-family:"Fraunces",serif;
+    font-size:17px;font-weight:600;color:var(--forest-d);display:flex;align-items:center;gap:10px}
+  .cg-item summary::-webkit-details-marker{display:none}
+  /* Ritad triangel i stället för tecknet ▾ – Fraunces saknar glyfen. */
+  .cg-item summary::before{content:"";display:inline-block;flex:0 0 auto;width:0;height:0;
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:6px solid var(--ink-soft);transition:transform .15s}
+  .cg-item:not([open]) summary::before{transform:rotate(-90deg)}
+  .cg-item ol{margin:0;padding:0 18px 15px 40px;font-size:14.5px;line-height:1.6}
+  .cg-item ol li{padding:2px 0}
+  .cg-item .cg-none{padding:0 18px 15px;font-size:13px;color:var(--ink-soft)}
+  .cg-row{border:1px solid var(--line-2);border-radius:12px;padding:13px 15px;margin-bottom:12px;
+    background:#fbfdff;display:flex;flex-direction:column;gap:10px}
+  .cg-row-head{display:flex;gap:8px;align-items:flex-end}
+  .cg-row-head .field{flex:1}
+  /* På mobil får namnet hela raden och knapparna flyttar ned under. */
+  @media(max-width:480px){
+    .cg-row-head{flex-wrap:wrap}
+    .cg-row-head .field{flex:1 0 100%}
+  }
+  .cg-row textarea{min-height:78px;font-size:14px;line-height:1.55;resize:vertical;overflow:hidden}
+  .cg-save-row{display:flex;gap:10px;margin-top:18px}
+
   .admin-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .admin-tabs{margin-bottom:16px;max-width:100%;overflow-x:auto}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
@@ -200,6 +227,7 @@
       <span id="userLabel" class="hide" style="align-self:center;color:#c2d7ea;font-size:12.5px;font-weight:600;margin-right:2px"></span>
       <button class="icon-btn hide" id="adminBtn">Admin</button>
       <button class="icon-btn hide" id="logBtn">← Tillbaka</button>
+      <button class="icon-btn" id="compGuideBtn">Tävlingar</button>
       <a class="icon-btn" href="guide.html">Hjälp</a>
       <button class="icon-btn hide" id="logoutBtn">Logga ut</button>
     </div>
@@ -266,6 +294,33 @@
       <div class="card-body">
         <ul class="slist" id="sessionList"></ul>
         <div class="empty" id="sessionEmpty"><div>Inga skyttar registrerade för <span id="passDateLabel">datumet</span> ännu.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TÄVLINGSLATHUND ============ -->
+  <!-- Egen vy som nås från masthead både utloggad och inloggad. Innehållet
+       ligger i app_settings (nyckeln tavlingar) och redigeras av admin här. -->
+  <div id="compGuideView" class="hide">
+    <div class="card">
+      <div class="card-head">
+        <h2>Tävlingar</h2>
+        <div class="cg-head-btns">
+          <button class="btn ghost tiny hide" id="cgEditBtn">✎ Redigera</button>
+          <button class="btn ghost tiny" id="cgBackBtn">← Tillbaka</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="cg-lead">Vad som ingår i föreningens tävlingar.</p>
+        <div id="cgList"></div>
+        <div id="cgEdit" class="hide">
+          <div id="cgEditList"></div>
+          <button class="btn ghost tiny" id="cgAdd" style="margin-top:4px">+ Lägg till tävling</button>
+          <div class="cg-save-row">
+            <button class="btn primary" id="cgSave">Spara</button>
+            <button class="btn ghost" id="cgCancel">Avbryt</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -440,18 +495,31 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.97";
+const APP_VERSION = "v.98";
 
-/* Fasta tävlingar i rullgardinen. Lägg till/ta bort här. */
-/* "Övningsskjutning" står inte i listan – det är standard för alla poster
+/* Tävlingarna och deras program. Samma lista driver både lathunden (vyn
+   "Tävlingar") och rullgardinen vid registrering – ändra på ett ställe.
+   Den skarpa listan ligger i app_settings (nyckeln tavlingar) och redigeras av
+   admin i lathunden; listan nedan är bara reserv när raden saknas eller nätet
+   är nere. Ordningen i listan är visningsordningen.
+   "Övningsskjutning" står inte i listan – det är standard för alla poster
    utan vald tävling (även vanliga skyttar som inte väljer något). */
-const TAVLINGAR = [
+const PROGRAM_STANDARD = [
+  "5 övningsskott liggande",
+  "5 skott liggande, markering efter vardera",
+  "5 skott liggande, markering efter serien",
+  "5 skott liggande, markering efter serien",
+  "5 skott liggande",
+];
+const TAVLINGAR_DEFAULT = [
   "FSR Propagandatävlan",
   "Vårpokalen",
   "D. von Schedvins vandringspris",
   "Korporationsskjutning",
   "Höstpokalen",
-];
+  "Föreningsmästerskap",
+].map(namn=>({namn, program:PROGRAM_STANDARD.slice()}));
+let TAVLINGAR_DATA = TAVLINGAR_DEFAULT.map(t=>({namn:t.namn, program:t.program.slice()}));
 
 /* Skjutledare i rullgardinen (förnamn + efternamnets initial). Lägg till/ta bort här. */
 const SKJUTLEDARE = [
@@ -522,6 +590,50 @@ async function savePrice(v){
   }
   showBanner("ok",`Pris per köpt skott: ${kr(v)} – gäller poster som registreras från och med nu.`,5000);
   renderAll();
+}
+
+// Tävlingslistan i app_settings (nyckel tavlingar). Till skillnad från priset
+// läses den även utloggad – policyn read_public i Supabase släpper igenom just
+// den nyckeln. Saknas raden används TAVLINGAR_DEFAULT.
+// Kastar bort skräp och tomma rader så att en trasig rad inte tömmer listan.
+function normTavlingar(v){
+  if(!Array.isArray(v)) return null;
+  const out=[];
+  for(const t of v){
+    const namn=String((t&&t.namn)||"").trim();
+    if(!namn) continue;
+    const program=Array.isArray(t&&t.program)
+      ? t.program.map(r=>String(r==null?"":r).trim()).filter(Boolean) : [];
+    out.push({namn,program});
+  }
+  return out.length?out:null;
+}
+async function loadTavlingar(){
+  if(!REMOTE){
+    try{ const v=normTavlingar(JSON.parse(localStorage.getItem("hskf_tavlingar")||"null")); if(v) TAVLINGAR_DATA=v; }catch(_){}
+    return;
+  }
+  try{
+    const {data}=await sb.from("app_settings").select("value").eq("key","tavlingar").maybeSingle();
+    const v=normTavlingar(data&&data.value);
+    if(v) TAVLINGAR_DATA=v;
+  }catch(_){/* raden/tabellen saknas eller offline – kör vidare på reservlistan */}
+}
+async function saveTavlingar(list){
+  const v=normTavlingar(list);
+  if(!v){ showBanner("warn","Lathunden måste innehålla minst en tävling med namn.",5000); return false; }
+  if(REMOTE){
+    const {error}=await sb.from("app_settings").upsert({key:"tavlingar",value:v});
+    if(error){ showBanner("warn","Kunde inte spara tävlingarna: "+esc(error.message)+" – har du kört migreringen (app_settings) i Supabase?",7000); return false; }
+  } else {
+    localStorage.setItem("hskf_tavlingar",JSON.stringify(v));
+  }
+  TAVLINGAR_DATA=v;
+  // Rullgardinen matas ur samma lista – fyll om den så ändringen syns direkt.
+  fillTavlingar($("#p-tavlingnamn"),"Välj tävling…",pass.tavlingNamn||"");
+  $("#p-tavlingnamn").value=pass.tavlingNamn||"";
+  showBanner("ok","Lathunden är sparad.",4000);
+  return true;
 }
 
 /* ---------- data layer ---------- */
@@ -914,17 +1026,18 @@ $("#memberTbody").addEventListener("click",async(ev)=>{
 });
 
 // Pure: groups competition rows by tavling_namn and returns ordered [name, sortedRows].
-// Order: TAVLINGAR names (except practice) in list order, then other names alpha (sv),
-// then "Övningsskjutning" last. Competition tables sort by poäng desc (blanks last,
-// tiebreak date desc); the practice table sorts by date desc.
+// Order: the lathund's names (except practice) in list order, then other names
+// alpha (sv), then "Övningsskjutning" last. Competition tables sort by poäng desc
+// (blanks last, tiebreak date desc); the practice table sorts by date desc.
 function compGroups(rows){
   const PRACTICE="Övningsskjutning";
   const groups=new Map();
   for(const e of rows){ const k=(e.tavling_namn||"").trim(); if(!groups.has(k))groups.set(k,[]); groups.get(k).push(e); }
   const pv=e=>(e.poang!=null&&e.poang!=="")?+e.poang:-Infinity;
+  const namn=TAVLINGAR_DATA.map(t=>t.namn);
   const order=[];
-  for(const t of TAVLINGAR){ if(t!==PRACTICE && groups.has(t)) order.push(t); }
-  [...groups.keys()].filter(k=>k!==PRACTICE && !TAVLINGAR.includes(k))
+  for(const t of namn){ if(t!==PRACTICE && groups.has(t)) order.push(t); }
+  [...groups.keys()].filter(k=>k!==PRACTICE && !namn.includes(k))
     .sort((a,b)=>a.localeCompare(b,"sv")).forEach(k=>order.push(k));
   if(groups.has(PRACTICE)) order.push(PRACTICE);
   return order.map(k=>{
@@ -1154,10 +1267,55 @@ $("#restoreFile").addEventListener("change",async ev=>{
   finally{ btn.disabled=false; btn.textContent=lbl; }
 });
 function fillTavlingar(sel,emptyLabel,extra){
-  let html=`<option value="">${emptyLabel}</option>`+TAVLINGAR.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
-  if(extra && !TAVLINGAR.includes(extra))
+  const namn=TAVLINGAR_DATA.map(t=>t.namn);
+  let html=`<option value="">${emptyLabel}</option>`+namn.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  if(extra && !namn.includes(extra))
     html+=`<option value="${esc(extra)}">${esc(extra)}${extra==="Övningsskjutning"?"":" (eget)"}</option>`;
   sel.innerHTML=html;
+}
+
+/* ---------- tävlingslathund ---------- */
+function renderCompGuide(){
+  $("#cgEditBtn").classList.toggle("hide", !isAdmin);
+  $("#cgList").innerHTML = TAVLINGAR_DATA.map(t=>`
+    <details class="cg-item" open>
+      <summary>${esc(t.namn)}</summary>
+      ${t.program.length
+        ? `<ol>${t.program.map(r=>`<li>${esc(r)}</li>`).join("")}</ol>`
+        : `<div class="cg-none">Programmet är inte ifyllt ännu.</div>`}
+    </details>`).join("") || `<div class="empty"><div>Inga tävlingar upplagda ännu.</div></div>`;
+}
+// Redigeringen jobbar mot en kopia (cgDraft); inget skrivs förrän Spara.
+let cgDraft=null;
+function renderCompEdit(){
+  $("#cgEditList").innerHTML = cgDraft.map((t,i)=>`
+    <div class="cg-row">
+      <div class="cg-row-head">
+        <div class="field"><label for="cg-n-${i}">Tävling</label>
+          <input type="text" id="cg-n-${i}" data-cg-namn="${i}" value="${esc(t.namn)}"></div>
+        <button class="btn ghost tiny" data-cg-up="${i}" title="Flytta upp"${i===0?" disabled":""}>↑</button>
+        <button class="btn ghost tiny" data-cg-down="${i}" title="Flytta ned"${i===cgDraft.length-1?" disabled":""}>↓</button>
+        <button class="btn danger tiny" data-cg-del="${i}" title="Ta bort">✕</button>
+      </div>
+      <div class="field"><label for="cg-p-${i}">Program – en rad per punkt</label>
+        <textarea id="cg-p-${i}" data-cg-prog="${i}">${esc(t.program.join("\n"))}</textarea></div>
+    </div>`).join("");
+  $("#cgEditList").querySelectorAll("textarea").forEach(cgGrow);
+}
+// Låt textrutan växa med innehållet – annars klipps sista programraden.
+function cgGrow(el){ el.style.height="auto"; el.style.height=(el.scrollHeight+2)+"px"; }
+// Läser tillbaka fälten till cgDraft. Måste köras före varje omrendering,
+// annars tappas det användaren just skrivit vid flytt/ta bort/lägg till.
+function cgSync(){
+  document.querySelectorAll("[data-cg-namn]").forEach(el=>{ cgDraft[+el.dataset.cgNamn].namn=el.value; });
+  document.querySelectorAll("[data-cg-prog]").forEach(el=>{
+    cgDraft[+el.dataset.cgProg].program=el.value.split("\n").map(s=>s.trim()).filter(Boolean);
+  });
+}
+function cgExitEdit(){
+  cgDraft=null;
+  $("#cgEdit").classList.add("hide"); $("#cgList").classList.remove("hide");
+  renderCompGuide();
 }
 
 /* ---------- events ---------- */
@@ -1195,6 +1353,65 @@ $("#logBtn").addEventListener("click",()=>{
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
   $("#logBtn").classList.add("hide"); $("#adminBtn").classList.remove("hide");
   renderLog();
+});
+// Lathunden är en egen vy ovanpå den man står i (inloggning, logg eller admin).
+// cgReturn/cgPrevMast minns vad som ska tillbaka när man trycker ← Tillbaka.
+let cgReturn=null, cgPrevMast=null;
+function closeCompGuide(restore){
+  if(cgDraft) cgExitEdit();
+  $("#compGuideView").classList.add("hide");
+  $("#compGuideBtn").classList.remove("hide");
+  if(restore){
+    $(cgReturn||"#authView").classList.remove("hide");
+    if(cgPrevMast){
+      $("#adminBtn").classList.toggle("hide",!cgPrevMast.admin);
+      $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
+    }
+  }
+  cgReturn=null; cgPrevMast=null;
+}
+$("#compGuideBtn").addEventListener("click",()=>{
+  cgReturn=["#authView","#logView","#adminView"].find(s=>!$(s).classList.contains("hide"))||"#authView";
+  cgPrevMast={admin:!$("#adminBtn").classList.contains("hide"), log:!$("#logBtn").classList.contains("hide")};
+  $(cgReturn).classList.add("hide");
+  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
+  $("#compGuideView").classList.remove("hide");
+  $("#compGuideBtn").classList.add("hide");
+  renderCompGuide();
+  window.scrollTo(0,0);
+});
+$("#cgBackBtn").addEventListener("click",()=>closeCompGuide(true));
+$("#cgEditBtn").addEventListener("click",()=>{
+  if(!isAdmin) return;
+  cgDraft=TAVLINGAR_DATA.map(t=>({namn:t.namn, program:t.program.slice()}));
+  // Visa panelen först: scrollHeight är 0 i display:none, så cgGrow mäter fel.
+  $("#cgList").classList.add("hide"); $("#cgEdit").classList.remove("hide");
+  $("#cgEditBtn").classList.add("hide");
+  renderCompEdit();
+});
+$("#cgCancel").addEventListener("click",cgExitEdit);
+$("#cgAdd").addEventListener("click",()=>{ cgSync(); cgDraft.push({namn:"",program:[]}); renderCompEdit(); });
+$("#cgEditList").addEventListener("input",e=>{ if(e.target.tagName==="TEXTAREA") cgGrow(e.target); });
+$("#cgEditList").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-cg-up],button[data-cg-down],button[data-cg-del]");
+  if(!b) return;
+  cgSync();
+  if(b.dataset.cgUp!=null){ const i=+b.dataset.cgUp; [cgDraft[i-1],cgDraft[i]]=[cgDraft[i],cgDraft[i-1]]; }
+  else if(b.dataset.cgDown!=null){ const i=+b.dataset.cgDown; [cgDraft[i+1],cgDraft[i]]=[cgDraft[i],cgDraft[i+1]]; }
+  else {
+    const i=+b.dataset.cgDel;
+    if(!confirm(`Ta bort ${cgDraft[i].namn||"tävlingen"} ur lathunden? Redan registrerade poster påverkas inte.`)) return;
+    cgDraft.splice(i,1);
+  }
+  renderCompEdit();
+});
+$("#cgSave").addEventListener("click",async()=>{
+  cgSync();
+  const btn=$("#cgSave"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Sparar…";
+  const ok=await saveTavlingar(cgDraft);
+  btn.disabled=false; btn.textContent=lbl;
+  if(ok) cgExitEdit();
 });
 // Klick på loggan/rubriken = samma som "Till inmatning", men bara när den knappen
 // är synlig (admin i admin-vyn) — så medlem/revisor/inloggning påverkas inte.
@@ -1434,6 +1651,7 @@ if("serviceWorker" in navigator){
 /* ---------- Auth (Supabase) ---------- */
 function showAuth(){
   authed=false; isAdmin=false; isLeader=false; entries=[];
+  closeCompGuide(false);   // lathunden får inte ligga kvar ovanpå inloggningen
   $("#authView").classList.remove("hide");
   $("#logView").classList.add("hide"); $("#adminView").classList.add("hide");
   $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
@@ -1456,6 +1674,7 @@ async function enterApp(session){
     showBanner("warn",`<b>Fel vid behörighetskontroll.</b> ${esc(e&&e.message||e)}`);
   }
   const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
+  closeCompGuide(false);   // vyerna nedan sätts om från grunden
   $("#authView").classList.add("hide");
   // Everyone lands in the logging view. Admin & revisor can also open Admin &
   // analys. Revisor logs like an admin (any shooter) but can't manage members
@@ -1514,7 +1733,9 @@ async function doLogin(){
   $("#appVer").textContent = APP_VERSION;
   pass.datum = today();   // datum utgår alltid från idag vid start (kan ändras i passet)
   savePass();
-  fillTavlingar($("#p-tavlingnamn"),"Välj tävling…");
+  // Lathunden ska funka utloggad – hämta listan innan något renderas.
+  await loadTavlingar();
+  fillTavlingar($("#p-tavlingnamn"),"Välj tävling…",pass.tavlingNamn||"");
   $("#leaderList").innerHTML=SKJUTLEDARE.map(n=>`<option>${esc(n)}</option>`).join("");
   applyPassToForm();
   if(!REMOTE){
