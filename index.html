@@ -663,7 +663,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.120";
+const APP_VERSION = "v.121";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1210,7 +1210,7 @@ function renderMembers(){
     // Revisor sees the full list but no mutating controls — admin only.
     const actions = !isAdmin ? "" : `
         <button class="btn ghost tiny" data-editm="${esc(m.id)}" data-name="${esc(m.full_name)}" data-email="${esc(m.email)}" aria-label="Redigera" title="Redigera">✎<span class="btn-lbl"> Redigera</span></button>
-        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Reset pwd</button>
+        <button class="btn ghost tiny" data-reset="${esc(m.email)}">✉ Återst. lösen</button>
         ${isMe?"":(m.active===false
           ? `<button class="btn ghost tiny" data-react="${esc(m.id)}" title="Återaktivera">↻<span class="btn-lbl"> Återaktivera</span></button>`
           : `<button class="btn ghost tiny" data-deact="${esc(m.id)}" title="Inaktivera">⏸<span class="btn-lbl"> Inaktivera</span></button>`)}
