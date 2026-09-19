@@ -234,6 +234,14 @@
     .mast-menu .icon-btn:hover{background:#f3f8fd}
     .mast-menu .user-label{align-self:flex-start;color:var(--ink-soft);font-size:12.5px;margin:2px 0 4px 4px}
     .rowmenu-items .btn-lbl{display:inline}
+    /* Menyerna inne i adminvyn får en dämpad orange ton, så det syns direkt
+       att man är i administrationsdelen och inte i den vanliga loggen.
+       Huvudmenyn i mastheaden lämnas neutral – den visas i alla vyer. */
+    #adminView .rowmenu-items{background:#fdf4ec;border-color:#e7c4ab;
+      box-shadow:0 18px 40px -12px rgba(143,63,29,.3)}
+    #adminView .rowmenu-items .btn{color:var(--rust-d);border-color:#ecd3bf}
+    #adminView .rowmenu-items .btn:hover{background:#f6e3d5;border-color:#e7c4ab}
+    #adminView .rowmenu-items .btn.danger{color:var(--rust-d)}
   }
   .act-cell{text-align:right;white-space:nowrap}
   .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -663,7 +671,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.121";
+const APP_VERSION = "v.122";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
