@@ -217,12 +217,14 @@
   .rowmenu-items{display:inline-flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
   @media(max-width:640px){
     .rowmenu-btn{display:inline-block}
-    /* .rowmenu är inline-flex på dator; på telefon måste den bli en kolumn i
-       full bredd, annars klämmer den ihop knapparna bredvid ⋯. */
-    .rowmenu.open{flex-direction:column;align-items:stretch;width:100%}
-    .rowmenu-items{display:none;flex-direction:column;align-items:stretch;margin-top:8px}
+    /* Panelen svävar över sidan i stället för att göra raden högre, så ⋯ står
+       kvar på samma plats när man öppnar. position:fixed och inte absolute:
+       tabellen ligger i .tbl-scroll med overflow-x som hade klippt den.
+       Läget sätts mot knappen i placeRowMenu(). */
+    .rowmenu-items{display:none;position:fixed;z-index:60;width:212px;flex-direction:column;align-items:stretch;gap:6px;
+      background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;
+      box-shadow:0 18px 40px -12px rgba(0,0,0,.35)}
     .rowmenu.open .rowmenu-items{display:flex}
-    .rowmenu.open .rowmenu-btn{align-self:flex-end}
     .rowmenu-items .btn{text-align:left;padding:10px 12px;font-size:14px}
     .rowmenu-items .btn-lbl{display:inline}
   }
@@ -249,7 +251,6 @@
        ⋯ hamnar bredvid namnet, e-post och betald-märkning på egna rader. */
     .tbl-cards .act-cell{display:contents}
     .tbl-cards .rowmenu{grid-column:2;grid-row:1;justify-self:end;margin-left:0}
-    .tbl-cards .rowmenu.open{grid-column:1/-1;grid-row:auto;justify-self:stretch;width:100%;margin-top:8px}
     .tbl-cards .act-cell>.pill{grid-column:1/-1;justify-self:start;margin-top:8px}
     .tbl-cards .faktura-info{grid-column:1/-1;margin-top:6px}
     /* Dagar/skott/köpta slås ihop till en rad; utestående får stå kvar ensamt
@@ -612,7 +613,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.114";
+const APP_VERSION = "v.115";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1627,19 +1628,36 @@ $("#sessionList").addEventListener("click",async e=>{
 
 /* Radmeny i tabellerna: samma knappar på alla skärmar, men under ⋯ på telefon. */
 const rowMenu = inner => `<span class="rowmenu"><button class="btn ghost tiny rowmenu-btn" data-rowmenu aria-expanded="false" aria-label="Fler åtgärder">⋯</button><span class="rowmenu-items">${inner}</span></span>`;
-// En öppen rad i taget, annars växer tabellen okontrollerat på en liten skärm.
+function closeRowMenus(except){
+  document.querySelectorAll(".rowmenu.open").forEach(el=>{
+    if(el===except) return;
+    el.classList.remove("open");
+    const b=el.querySelector("[data-rowmenu]"); if(b) b.setAttribute("aria-expanded","false");
+  });
+}
+// Panelen är position:fixed på telefon (se CSS) och måste placeras mot knappen.
+// På dator ligger knapparna inline och placeringen hoppas över.
+function placeRowMenu(menu){
+  const items=menu.querySelector(".rowmenu-items"), btn=menu.querySelector("[data-rowmenu]");
+  if(!items||!btn) return;
+  if(getComputedStyle(items).position!=="fixed"){ items.style.top=items.style.left=""; return; }
+  const r=btn.getBoundingClientRect(), w=items.offsetWidth||212;
+  items.style.top=(r.bottom+6)+"px";
+  items.style.left=Math.round(Math.max(12,Math.min(r.right-w,window.innerWidth-w-12)))+"px";
+}
+// En öppen rad i taget, annars ligger flera paneler över varandra.
 document.addEventListener("click",e=>{
   const btn=e.target.closest("[data-rowmenu]");
-  document.querySelectorAll(".rowmenu.open").forEach(el=>{
-    if(!btn || el!==btn.closest(".rowmenu")){
-      el.classList.remove("open");
-      const b=el.querySelector("[data-rowmenu]"); if(b) b.setAttribute("aria-expanded","false");
-    }
-  });
+  const menu=btn?btn.closest(".rowmenu"):null;
+  closeRowMenus(menu);
   if(!btn) return;
-  const open=btn.closest(".rowmenu").classList.toggle("open");
+  const open=menu.classList.toggle("open");
   btn.setAttribute("aria-expanded",open?"true":"false");
+  if(open) placeRowMenu(menu);
 });
+// En svävande panel ska inte bli hängande när sidan rör sig under den.
+window.addEventListener("resize",()=>closeRowMenus());
+window.addEventListener("scroll",()=>closeRowMenus(),{passive:true});
 
 /* Hamburgermenyn. Samma element som på dator – de flyttas inte, de byter bara
    layout via display:contents, så alla befintliga lyssnare fungerar oförändrat. */
