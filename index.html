@@ -235,17 +235,24 @@
     .tbl-cards{overflow-x:visible}
     .tbl-cards thead{display:none}
     .tbl-cards table,.tbl-cards tbody,.tbl-cards tr,.tbl-cards td{display:block;width:auto}
-    .tbl-cards tr{border-bottom:1px solid var(--line-2);padding:13px 2px}
+    .tbl-cards tr{display:grid;grid-template-columns:1fr auto;column-gap:10px;border-bottom:1px solid var(--line-2);padding:13px 2px}
     .tbl-cards tr:last-child{border-bottom:none}
     .tbl-cards tr:hover{background:none}
-    .tbl-cards td{border:none;padding:1px 0;text-align:left;white-space:normal}
+    .tbl-cards td{grid-column:1/-1;border:none;padding:1px 0;text-align:left;white-space:normal}
     .tbl-cards td:empty{display:none}
     .tbl-cards td[data-label]::before{content:attr(data-label) ": ";color:var(--ink-soft);font-weight:600;font-size:12px}
-    .tbl-cards td.name-cell{font-weight:700;font-size:15.5px;margin-bottom:3px}
+    .tbl-cards td.name-cell{grid-column:1;grid-row:1;font-weight:700;font-size:15.5px;margin-bottom:3px}
     .tbl-cards td.num{text-align:left}
-    .tbl-cards .act-cell{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px}
-    .tbl-cards .rowmenu{margin-left:auto}
-    .tbl-cards .rowmenu.open{flex-basis:100%;margin-left:0}
+    /* display:contents låter cellens innehåll placeras direkt i radens rutnät:
+       ⋯ hamnar bredvid namnet, e-post och betald-märkning på egna rader. */
+    .tbl-cards .act-cell{display:contents}
+    .tbl-cards .rowmenu{grid-column:2;grid-row:1;justify-self:end;margin-left:0}
+    .tbl-cards .rowmenu.open{grid-column:1/-1;grid-row:auto;justify-self:stretch;width:100%;margin-top:8px}
+    .tbl-cards .act-cell>.pill{grid-column:1/-1;justify-self:start;margin-top:8px}
+    .tbl-cards .faktura-info{grid-column:1/-1;margin-top:6px}
+    /* Förklaringen till priset får egen rad; annars bryter den mitt i
+       meningen direkt efter inmatningsfältet. */
+    #priceHint .hint{display:block;margin-top:5px}
   }
   .empty{padding:38px 20px;text-align:center;color:var(--ink-soft)}
   .empty .big{font-family:"Fraunces",serif;font-size:20px;color:var(--ink);margin-bottom:4px}
@@ -278,10 +285,6 @@
   }
   @media(max-width:560px){
     .act-cell{white-space:normal}
-  }
-  @media(max-width:480px){
-    .chart{overflow-x:auto;-webkit-overflow-scrolling:touch}
-    .chart svg{width:auto;height:150px}
   }
   @media(max-width:400px){
     .stat .v{font-size:24px}
@@ -600,7 +603,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.112";
+const APP_VERSION = "v.113";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -941,7 +944,11 @@ function refreshYears(){
 }
 function barChart(pairs,unitColor){
   const max=Math.max(1,...pairs.map(p=>p[1]));
-  const W=Math.max(pairs.length*46,300), H=160, pad=26, bw=W/pairs.length;
+  // Smalare staplar på telefon så hela året ryms utan sidoscroll. SVG:n skalas
+  // till containerns bredd, så slotbredden avgör hur stora texterna blir sedan:
+  // en bred viewBox på en smal skärm krymper etiketterna till oläslighet.
+  const slot = (window.innerWidth<=640) ? 31 : 46;
+  const W=Math.max(pairs.length*slot,300), H=160, pad=26, bw=W/pairs.length;
   let bars="";
   pairs.forEach((p,i)=>{
     const h=(p[1]/max)*(H-pad-20); const x=i*bw+bw*0.18; const w=bw*0.64; const yv=H-pad-h;
@@ -1037,7 +1044,7 @@ function renderAdmin(){
     const paminnelse=isReminder(fm.faktura_skickad,v.since);
     const email=accountEmail(n);
     const fakturaInfo=(isAdmin&&hasPrices()&&REMOTE&&v.out>0)
-      ? `<div style="margin-top:4px;font-weight:400">`
+      ? `<div class="faktura-info" style="margin-top:4px;font-weight:400">`
         + (email?`<span class="hint">${esc(email)}</span>`:`<span class="hint" style="color:#b00020">ingen e-post på kontot</span>`)
         + (fm.faktura_skickad?` <span class="pill medlem">Skickad ${esc(String(fm.faktura_skickad).slice(0,10))}</span>`:``)
         + `</div>`
