@@ -78,11 +78,13 @@
     header.masthead h1{font-size:21px;margin-bottom:3px}
     header.masthead .sub{font-size:11.5px}
     .mast-actions{flex:none;margin-left:auto;justify-content:flex-end}
-    /* Menyn fälls ut i mastheaden i stället för att flyta ovanpå den: headern
-       har overflow:hidden för dekorationscirkeln, så en absolut placerad panel
-       skulle klippas bort. flex-basis:100% lägger den på egen rad, max-width +
-       margin-left:auto håller den vid högerkanten som en vanlig dropdown. */
-    .mast-menu{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:8px;margin-top:6px;margin-left:auto;max-width:232px}
+    /* Panelen svävar över sidan i stället för att göra mastheaden högre.
+       position:fixed och inte absolute: headern har overflow:hidden för
+       dekorationscirkeln och hade klippt bort en absolut placerad panel.
+       Läget sätts mot menyknappen i placeMastMenu() när den öppnas. */
+    .mast-menu{display:none;position:fixed;z-index:60;width:216px;flex-direction:column;align-items:stretch;gap:8px;
+      background:var(--forest-d);border:1px solid rgba(243,236,221,.3);border-radius:14px;padding:11px;
+      box-shadow:0 20px 44px -14px rgba(0,0,0,.6)}
     .mast-menu.open{display:flex}
     .mast-menu .icon-btn{display:flex;justify-content:flex-start;text-align:left;padding:12px 14px;font-size:15px}
     .mast-menu .user-label{align-self:flex-start;margin:2px 0 4px 2px;font-size:13px}
@@ -598,7 +600,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.111";
+const APP_VERSION = "v.112";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1626,11 +1628,25 @@ function closeMastMenu(){
   $("#mastMenu").classList.remove("open");
   $("#menuBtn").setAttribute("aria-expanded","false");
 }
+// Panelen är position:fixed på telefon (se CSS) och måste därför placeras mot
+// knappen. På dator är den display:contents och ska inte röras.
+function placeMastMenu(){
+  const m=$("#mastMenu");
+  if(!m.classList.contains("open")) return;
+  if(getComputedStyle(m).position!=="fixed"){ m.style.top=m.style.right=""; return; }
+  const r=$("#menuBtn").getBoundingClientRect();
+  m.style.top=(r.bottom+8)+"px";
+  m.style.right=Math.max(12,Math.round(window.innerWidth-r.right))+"px";
+}
 $("#menuBtn").addEventListener("click",e=>{
   e.stopPropagation();
   const open=$("#mastMenu").classList.toggle("open");
   $("#menuBtn").setAttribute("aria-expanded",open?"true":"false");
+  if(open) placeMastMenu();
 });
+// En svävande panel ska inte bli hängande när sidan rör sig under den.
+window.addEventListener("resize",closeMastMenu);
+window.addEventListener("scroll",closeMastMenu,{passive:true});
 // Stäng när man valt något i menyn, klickat utanför eller tryckt Escape.
 $("#mastMenu").addEventListener("click",e=>{ if(e.target.closest(".icon-btn")) closeMastMenu(); });
 document.addEventListener("click",e=>{
