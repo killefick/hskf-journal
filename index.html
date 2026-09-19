@@ -260,6 +260,10 @@
     .tbl-cards td[data-label="Skott"],
     .tbl-cards td[data-label="Köpta"]{display:none}
     .tbl-cards td[data-label="Utestående"]{font-weight:600;margin-top:3px}
+    /* Tabeller som ligger direkt i kortet (medlemslistan) saknar den padding
+       som .card-body ger Analys-tabellen – raderna hamnade utanför rubrikens
+       linje. Samma 20 px som .card-head. */
+    .card > .tbl-cards{padding-left:20px;padding-right:20px}
     /* Förklaringen till priset får egen rad; annars bryter den mitt i
        meningen direkt efter inmatningsfältet. */
     #priceHint .hint{display:block;margin-top:5px}
@@ -613,7 +617,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.115";
+const APP_VERSION = "v.116";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
