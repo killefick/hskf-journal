@@ -547,3 +547,31 @@ Ingen backfill: befintliga profiler får `gast = false`. Redeploya
 >  where p.gast = false
 >    and not exists (select 1 from auth.users u where u.id = p.id);
 > ```
+
+
+## 17. Ammunitionsköp – kolumnen `typ` (2026-09-19)
+
+Ett ask-köp är inte ett skjuttillfälle men delar allt annat med ett: samma pris,
+samma faktura, samma betald-markering. Det sparas därför som en rad i
+`skjuttillfallen` med `typ = 'ammokop'` i stället för i en egen tabell — då
+fungerar utestående-beräkningen, fakturamejlet, "Markera betald", backup/restore
+och RLS oförändrat.
+
+```sql
+alter table public.skjuttillfallen
+  add column if not exists typ text not null default 'skjutning';
+
+alter table public.skjuttillfallen
+  drop constraint if exists skjuttillfallen_typ_check;
+alter table public.skjuttillfallen
+  add constraint skjuttillfallen_typ_check check (typ in ('skjutning','ammokop'));
+```
+
+Ingen backfill: alla befintliga rader får `typ = 'skjutning'`.
+
+En köprad har `antal_skott = 50 × antal askar` och `kopt = true`. Askstorleken
+är konstanten `ASK_STORLEK` i `index.html` — ändras den måste siffran 50 i den
+här texten följa med, men gamla rader behåller sitt antal skott och sitt frysta
+pris. Klienten räknar aldrig `typ = 'ammokop'` som avlossade skott: raderna
+hålls utanför skottotal, skjutdagar, antal skyttar och månadsdiagram, men ingår
+i "köpta skott", utestående och fakturan.

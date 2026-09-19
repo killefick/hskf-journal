@@ -286,6 +286,7 @@
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
         <label class="comp-toggle" id="koptWrap" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
+        <div id="ammoWrap" style="margin-top:12px"><button class="btn ghost" id="ammoBtn">Sälj ammunition</button></div>
       </div>
     </div>
 
@@ -422,6 +423,19 @@
   <div class="m-foot"><button class="btn ghost" id="e-cancel">Avbryt</button><button class="btn primary" id="e-save">Spara</button></div>
 </div></div>
 
+<!-- AMMO MODAL -->
+<div class="modal-bg" id="ammoModal"><div class="modal">
+  <div class="m-head"><h3>Sälj ammunition</h3></div>
+  <div class="m-body">
+    <p class="hint">Ammunition säljs i askar om 50 skott. Köpet debiteras som köpta skott och hamnar på samma faktura, men räknas inte som avlossade skott i statistiken.</p>
+    <div class="field"><label for="am-skytt">Skytt</label><select id="am-skytt"></select></div>
+    <div class="field"><label for="am-askar">Antal askar</label><input type="number" id="am-askar" min="1" max="20" step="1" value="1" inputmode="numeric" enterkeyhint="done"></div>
+    <p class="hint" id="am-sum"></p>
+    <p class="hint" id="am-err" style="color:#b00020"></p>
+  </div>
+  <div class="m-foot"><button class="btn ghost" id="am-cancel">Avbryt</button><button class="btn primary" id="am-save">Registrera köp</button></div>
+</div></div>
+
 <!-- GUEST MODAL -->
 <div class="modal-bg" id="guestModal"><div class="modal">
   <div class="m-head"><h3>Ny gästskytt</h3></div>
@@ -507,7 +521,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.103";
+const APP_VERSION = "v.104";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -517,6 +531,12 @@ const TAVLING_SKOTT = 20;
 
 /* Sentinelvärde för "➕ Ny gästskytt…" i skyttväljaren – aldrig ett riktigt id. */
 const GUEST_NEW = "__nygast__";
+
+/* Ammunition säljs i askar om 50 skott. Ett köp sparas som en journalrad med
+   typ = "ammokop": den debiteras som vilka köpta skott som helst (samma pris,
+   samma faktura, samma betald-markering) men räknas ALDRIG som avlossade skott
+   i statistiken. Se migrering 17 i docs/supabase-setup.md. */
+const ASK_STORLEK = 50;
 
 /* Tävlingarna och deras program. Samma lista driver både lathunden (vyn
    "Tävlingar") och rullgardinen vid registrering – ändra på ett ställe.
@@ -591,6 +611,9 @@ const rowOutstanding = e => (e.kopt && !e.betald) ? (+e.antal_skott||0) * rowPri
 const rowPaid = e => (e.kopt && e.betald) ? (+e.antal_skott||0) * rowPris(e) : 0;          // redan betalt
 const koptaSkott = e => e.kopt ? (+e.antal_skott||0) : 0;
 const hasPrices = () => +PRIS_PER_SKOTT > 0;
+const isKop = e => e.typ === "ammokop";
+const askAntal = e => Math.round((+e.antal_skott||0)/ASK_STORLEK);
+const askText = e => { const n=askAntal(e); return `${fmt(n)} ${n===1?"ask":"askar"} (${fmt(+e.antal_skott||0)} skott)`; };
 /* När en post skapades, som tidsstämpel. Rader utan created_at (äldre lokal
    data) räknas som urgamla så att de behåller sitt tidigare beteende. */
 const debtStamp = e => Date.parse(e.created_at||0)||0;
@@ -802,21 +825,26 @@ function renderLog(){
   $("#sessionEmpty").style.display=rows.length?"none":"block";
   let ptot=0;
   rows.forEach(e=>{
-    ptot+=(+e.antal_skott||0);
+    if(!isKop(e)) ptot+=(+e.antal_skott||0);
     // Only show delete on rows the user may actually delete (own rows, or admin).
     // Mirrors the RLS delete policy (created_by = auth.uid() or is_admin()).
-    const canDel = isAdmin || (e.created_by && e.created_by===_uid);
+    // Ett ammunitionsköp är pengar och får bara tas bort av admin.
+    const canDel = isKop(e) ? isAdmin : (isAdmin || (e.created_by && e.created_by===_uid));
     const li=document.createElement("li");
     li.innerHTML=`<span class="nm">${esc(displayName(e.skytt_id))}</span>
-      <span class="sk">${fmt(e.antal_skott)} skott</span>
-      ${e.kopt?`<span class="pill medlem">Köpt</span>`:""}
+      <span class="sk">${isKop(e)?esc(askText(e)):fmt(e.antal_skott)+" skott"}</span>
+      ${isKop(e)?`<span class="pill medlem">Köp</span>`:(e.kopt?`<span class="pill medlem">Köpt</span>`:"")}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
       ${canDel?`<span class="x" data-del="${e.id}">✕</span>`:""}
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
     ul.appendChild(li);
   });
-  const nShooters=new Set(rows.map(e=>e.skytt_id)).size;
-  $("#passTotal").textContent=rows.length?`${fmt(ptot)} skott · ${nShooters} ${nShooters===1?"skytt":"skyttar"}`:"";
+  // Ett rent ammunitionsköp betyder inte att personen sköt – räknas inte som skytt.
+  const nShooters=new Set(rows.filter(e=>!isKop(e)).map(e=>e.skytt_id)).size;
+  const nKop=rows.filter(isKop).length;
+  $("#passTotal").textContent=rows.length
+    ? `${fmt(ptot)} skott · ${nShooters} ${nShooters===1?"skytt":"skyttar"}`+(nKop?` · ${fmt(nKop)} ammunitionsköp`:"")
+    : "";
 }
 
 /* ---------- ADMIN render ---------- */
@@ -855,19 +883,24 @@ async function loadFakturaMeta(){
 // (köpt & ej betald) skott, en rad per skjutdag.
 function buildInvoiceText(id, year, reminder){
   const name=nameOf(id);
-  const byDate={};
+  const byDate={}, kopByDate={};
   // Radpriset är fryst vid registrering, så olika dagar kan ha olika pris.
   let totalKr=0; const prisSet=new Set();
   entriesForYear(year)
     .filter(e=>e.skytt_id===id && e.kopt && !e.betald && (+e.antal_skott||0)>0)
-    .forEach(e=>{ byDate[e.datum]=(byDate[e.datum]||0)+(+e.antal_skott||0); totalKr+=rowOutstanding(e); prisSet.add(rowPris(e)); });
-  const dates=Object.keys(byDate).sort();
-  const totalSkott=dates.reduce((s,d)=>s+byDate[d],0);
+    .forEach(e=>{ const m=isKop(e)?kopByDate:byDate; m[e.datum]=(m[e.datum]||0)+(+e.antal_skott||0); totalKr+=rowOutstanding(e); prisSet.add(rowPris(e)); });
+  const dates=Object.keys(byDate).sort(), kopDates=Object.keys(kopByDate).sort();
+  const totalSkott=dates.reduce((s,d)=>s+byDate[d],0)+kopDates.reduce((s,d)=>s+kopByDate[d],0);
   totalKr=Math.round(totalKr*100)/100;
   const totalLine = prisSet.size===1
     ? `Totalt: ${fmt(totalSkott)} skott × ${fmt([...prisSet][0])} kr = ${fmt(totalKr)} kr`
     : `Totalt: ${fmt(totalSkott)} skott = ${fmt(totalKr)} kr`;
   const lines=dates.map(d=>`  ${d}:    ${fmt(byDate[d])} skott`);
+  // Askarna redovisas för sig så mottagaren känner igen sitt köp. Summan räknas
+  // ändå i skott, eftersom en ask kostar ASK_STORLEK × priset per skott.
+  const kopLines=kopDates.map(d=>{const n=Math.round(kopByDate[d]/ASK_STORLEK); return `  ${d}:    ${fmt(n)} ${n===1?"ask":"askar"} (${fmt(kopByDate[d])} skott)`;});
+  const skottBlock=lines.length?`Köpta skott:\n${lines.join("\n")}\n`:"";
+  const kopBlock=kopLines.length?`${lines.length?"\n":""}Köpt ammunition:\n${kopLines.join("\n")}\n`:"";
   const subject=reminder
     ? `Påminnelse: Faktura ammunition – Hillareds skytteförening ${year}`
     : `Faktura ammunition – Hillareds skytteförening ${year}`;
@@ -879,9 +912,7 @@ function buildInvoiceText(id, year, reminder){
 
 ${intro}
 
-Köpta skott:
-${lines.join("\n")}
-${totalLine}
+${skottBlock}${kopBlock}${totalLine}
 
 Betalas till Bankgiro: 370-4624
 Ange som meddelande: ${name} Ammunition
@@ -897,9 +928,12 @@ function renderAdmin(){
   // Gäster är inte föreningens skyttar: de syns i pass, logg och tävlingsresultat
   // men räknas inte i årets nyckeltal, diagram eller skyttetabell.
   const yeM=ye.filter(e=>!isGuestId(e.skytt_id));
-  const tot=yeM.reduce((s,e)=>s+(+e.antal_skott||0),0);
-  const days=new Set(yeM.map(e=>e.datum)).size;
-  const shooters=new Set(yeM.map(e=>e.skytt_id).filter(Boolean));
+  // Ett ammunitionsköp är inte avlossade skott: det räknas i kronor och i
+  // "köpta skott", men aldrig i skottotal, skjutdagar eller månadsdiagram.
+  const yeS=yeM.filter(e=>!isKop(e));
+  const tot=yeS.reduce((s,e)=>s+(+e.antal_skott||0),0);
+  const days=new Set(yeS.map(e=>e.datum)).size;
+  const shooters=new Set(yeS.map(e=>e.skytt_id).filter(Boolean));
   const costTot=yeM.reduce((s,e)=>s+rowOutstanding(e),0);
   $("#s-total").textContent=fmt(tot);
   $("#s-days").textContent=fmt(days);
@@ -908,11 +942,11 @@ function renderAdmin(){
   // per month
   const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
   const msum=Array(12).fill(0);
-  yeM.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
+  yeS.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
   $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#2079cc");
   // per shooter
   const map={};
-  yeM.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
+  yeM.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; if(!isKop(e)){ map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); } map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
@@ -951,7 +985,7 @@ function renderAdminTable(){
   const y=$("#a-year").value||currentYearStr();
   const q=$("#search").value.trim().toLowerCase();
   let rows=entriesForYear(y);
-  if(q)rows=rows.filter(e=>`${nameOf(e.skytt_id)} ${e.skjutledare} ${e.anmarkning} ${e.tavling_namn||""}`.toLowerCase().includes(q));
+  if(q)rows=rows.filter(e=>`${nameOf(e.skytt_id)} ${e.skjutledare} ${e.anmarkning} ${isKop(e)?"Ammunitionsköp ask":(e.tavling_namn||"")}`.toLowerCase().includes(q));
   rows.sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
   $("#rowCount").textContent=`(${rows.length})`;
   $("#adminEmpty").classList.toggle("hide",rows.length>0);
@@ -965,11 +999,11 @@ function renderAdminTable(){
   $("#adminTbody").innerHTML=shown.map(e=>{
     return `<tr>
       <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(displayName(e.skytt_id))}</td>
-      <td class="num">${fmt(e.antal_skott)}</td>
+      <td class="num">${isKop(e)?esc(askText(e)):fmt(e.antal_skott)}</td>
       <td>${e.kopt?"Ja":"–"}</td>
       <td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td>
       <td>${esc(e.skjutledare)}</td>
-      <td>${esc(e.tavling_namn)}</td>
+      <td>${isKop(e)?"Ammunitionsköp":esc(e.tavling_namn)}</td>
       <td style="color:var(--ink-soft)">${esc(e.anmarkning)}</td>
       ${isAdmin?`<td><div class="row-actions">
         <button class="btn ghost tiny" data-edit="${e.id}">Ändra</button>
@@ -1181,6 +1215,49 @@ $("#q-skytt-wrap").addEventListener("change",e=>{
   if(e.target&&e.target.id==="q-skytt"&&e.target.value===GUEST_NEW) openGuestModal();
 });
 
+/* ---------- ammunitionsköp ---------- */
+function ammoSum(){
+  const n=Math.max(1,Math.round(+$("#am-askar").value||1));
+  const skott=n*ASK_STORLEK;
+  $("#am-sum").textContent=`${fmt(n)} ${n===1?"ask":"askar"} = ${fmt(skott)} skott = ${kr(skott*(+PRIS_PER_SKOTT||0))}`;
+}
+function openAmmoModal(){
+  // Bara medlemmar: en gäst kan inte faktureras ännu (steg 2 i gästspecen) och
+  // skulle få en skuld som inte syns någonstans i Analys.
+  $("#am-skytt").innerHTML=`<option value="">Välj skytt…</option>`+
+    directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("");
+  $("#am-askar").value="1"; $("#am-err").textContent=""; ammoSum();
+  $("#ammoModal").classList.add("open");
+}
+async function saveAmmo(){
+  if(!hasPrices()){ $("#am-err").textContent="Inget pris per skott är satt – sätt det i Analys först."; return; }
+  const skytt_id=$("#am-skytt").value;
+  if(!skytt_id){ $("#am-err").textContent="Välj en skytt."; return; }
+  const n=Math.round(+$("#am-askar").value||0);
+  if(!(n>=1)){ $("#am-err").textContent="Ange minst en ask."; return; }
+  if(!(pass.ledare||"").trim()){ $("#am-err").textContent="Ange skjutledare för dagens skytte först."; return; }
+  const btn=$("#am-save"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Sparar…"; $("#am-err").textContent="";
+  try{
+    const saved=await addRow({datum:pass.datum||today(), skytt_id, antal_skott:n*ASK_STORLEK,
+      skjutledare:pass.ledare, anmarkning:"", pris:+PRIS_PER_SKOTT||0, kopt:true, typ:"ammokop"});
+    if(REMOTE){ await loadAll(); } else { entries.unshift(saved); }
+    renderAll();
+    $("#ammoModal").classList.remove("open");
+    showBanner("ok",`${esc(nameOf(skytt_id))}: ${fmt(n)} ${n===1?"ask":"askar"} (${fmt(n*ASK_STORLEK)} skott) registrerat.`,4000);
+  }catch(err){
+    const m=String(err&&err.message||err);
+    $("#am-err").textContent=/typ|column/i.test(m)
+      ? "Kolumnen typ saknas i databasen. Kör migrering 17 i docs/supabase-setup.md."
+      : "Kunde inte spara: "+m;
+  }finally{ btn.disabled=false; btn.textContent=lbl; }
+}
+$("#ammoBtn").addEventListener("click",openAmmoModal);
+$("#am-cancel").addEventListener("click",()=>$("#ammoModal").classList.remove("open"));
+$("#ammoModal").addEventListener("click",e=>{if(e.target.id==="ammoModal")$("#ammoModal").classList.remove("open");});
+$("#am-askar").addEventListener("input",ammoSum);
+$("#am-save").addEventListener("click",saveAmmo);
+
 /* ---------- quick add ---------- */
 async function quickAdd(){
   if(!(pass.ledare||"").trim()){
@@ -1260,7 +1337,7 @@ function summaryRows(ye,y){
 function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Betald","Poäng","Skjutledare","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
-    .map(e=>[e.datum,displayName(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
+    .map(e=>[e.datum,displayName(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,isKop(e)?"Ammunitionsköp":(e.tavling_namn||""),e.anmarkning,Math.round(rowCost(e)*100)/100]);
 }
 function payRows(ye){
   const map={};
@@ -1800,6 +1877,7 @@ async function enterApp(session){
   const fullLog = isAdmin||isLeader;
   $("#passCard").classList.toggle("hide", !fullLog);
   $("#koptWrap").classList.toggle("hide", !fullLog);
+  $("#ammoWrap").classList.toggle("hide", !fullLog);
   // Passet är personligt och gäller en dag i taget: samma användare behåller
   // skjutledare/tävling över omstarter samma dag; en annan användare eller en
   // ny dag börjar om med sig själv som skjutledare och tävling av.
