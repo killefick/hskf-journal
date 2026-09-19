@@ -270,6 +270,15 @@
        som .card-body ger Analys-tabellen – raderna hamnade utanför rubrikens
        linje. Samma 20 px som .card-head. */
     .card > .tbl-cards{padding-left:20px;padding-right:20px}
+    /* Medlemskortet: namnet bär tyngden, e-posten är sekundär, och
+       rollväljaren står utan "Roll:"-etikett – en select som visar "Medlem"
+       förklarar sig själv, och etiketten fick kortet att se ut som ett
+       formulär mitt i en lista. */
+    .tbl-cards .email-cell{color:var(--ink-soft);font-size:13px;margin-top:1px}
+    #memberTbody td[data-label="Roll"]::before{content:none}
+    #memberTbody td[data-label="Roll"]{margin-top:9px}
+    #memberTbody .role-sel{font-size:13.5px;padding:7px 10px}
+    .tbl-cards tr{padding-top:15px;padding-bottom:15px}
     /* Verktygsraden: ⋯ mot högerkanten, årsväljaren kvar till vänster. */
     #toolMenu{margin-left:auto}
     /* Fem flikar ryms inte på en rad. Sidoscroll dolde den sista helt, så de
@@ -654,7 +663,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.119";
+const APP_VERSION = "v.120";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1208,7 +1217,7 @@ function renderMembers(){
         ${isMe?"":`<button class="btn ghost tiny" data-delm="${esc(m.id)}" title="Ta bort">🗑<span class="btn-lbl"> Ta bort</span></button>`}`;
     return `<tr>
       <td class="name-cell">${esc(m.full_name)}</td>
-      <td>${esc(m.email)}</td>
+      <td class="email-cell">${esc(m.email)}</td>
       <td data-label="Roll">${sel||`<span class="pill ${rolePill(m.role)}">${roleLabel(m.role)}</span>`}${m.active===false?` <span class="pill inaktiv">Inaktiv</span>`:""}</td>
       <td class="act-cell">${actions?`<span class="rowmenu"><button class="btn ghost tiny rowmenu-btn" data-rowmenu aria-expanded="false" aria-label="Fler åtgärder">⋯</button><span class="rowmenu-items">${actions}</span></span>`:""}</td>
     </tr>`;
