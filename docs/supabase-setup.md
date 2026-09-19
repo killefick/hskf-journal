@@ -453,12 +453,12 @@ create policy "read_public" on public.app_settings for select to anon
   using (key = 'tavlingar');
 
 insert into public.app_settings (key, value) values ('tavlingar', $json$[
-  {"namn":"FSR Propagandatävlan",           "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
-  {"namn":"Vårpokalen",                     "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
-  {"namn":"D. von Schedvins vandringspris", "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
-  {"namn":"Korporationsskjutning",          "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
-  {"namn":"Höstpokalen",                    "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]},
-  {"namn":"Föreningsmästerskap",            "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien","5 skott liggande"]}
+  {"namn":"FSR Propagandatävlan",           "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]},
+  {"namn":"Vårpokalen",                     "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]},
+  {"namn":"D. von Schedvins vandringspris", "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]},
+  {"namn":"Korporationsskjutning",          "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]},
+  {"namn":"Höstpokalen",                    "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]},
+  {"namn":"Föreningsmästerskap",            "program":["5 övningsskott liggande","5 skott liggande, markering efter vardera","5 skott liggande, markering efter serien","5 skott liggande, markering efter serien"]}
 ]$json$::jsonb)
   on conflict (key) do nothing;
 ```
