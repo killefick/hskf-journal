@@ -54,6 +54,7 @@
   .mast-actions{display:flex;gap:8px;flex-wrap:wrap}
   .icon-btn{background:transparent;border:1px solid rgba(243,236,221,.4);color:#f3ecdd;border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;font-size:13px}
   .icon-btn:hover{background:rgba(243,236,221,.12)}
+  .icon-btn[aria-current]{background:rgba(243,236,221,.18);border-color:rgba(243,236,221,.75)}
   .icon-btn.solid{background:#f3ecdd;color:var(--forest-d);border-color:#f3ecdd}
   .icon-btn.solid:hover{background:#e4d9bf;border-color:#e4d9bf}
   a.icon-btn{text-decoration:none;display:inline-flex;align-items:center}
@@ -232,6 +233,7 @@
       padding:10px 12px;font-size:14px;border-radius:9px}
     .mast-menu .icon-btn{color:var(--ink);border-color:var(--line);background:transparent}
     .mast-menu .icon-btn:hover{background:#f3f8fd}
+    .mast-menu .icon-btn[aria-current]{background:#eaf2fa;border-color:var(--forest);color:var(--forest-d);font-weight:700}
     .mast-menu .user-label{align-self:flex-start;color:var(--ink-soft);font-size:12.5px;margin:2px 0 4px 4px}
     .rowmenu-items .btn-lbl{display:inline}
     /* Menyerna inne i adminvyn får en dämpad orange ton, så det syns direkt
@@ -671,7 +673,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.122";
+const APP_VERSION = "v.123";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1696,6 +1698,17 @@ $("#sessionList").addEventListener("click",async e=>{
   if(await delRow(x.dataset.del)){ await loadAll(); renderAll(); }
 });
 
+/* Menyns innehåll styrs av rollen, inte av vilken vy man står i: annars får man
+   olika meny på olika ställen och tappar orienteringen. Aktuell vy markeras i
+   stället för att plockas bort. */
+function markCurrentView(){
+  const mark=(sel,on)=>{ const el=$(sel); if(!el) return;
+    if(on) el.setAttribute("aria-current","page"); else el.removeAttribute("aria-current"); };
+  const inGuide=!$("#compGuideView").classList.contains("hide");
+  mark("#compGuideBtn", inGuide);
+  mark("#adminBtn", !inGuide && !$("#adminView").classList.contains("hide"));
+}
+
 /* Radmeny i tabellerna: samma knappar på alla skärmar, men under ⋯ på telefon. */
 const rowMenu = inner => `<span class="rowmenu"><button class="btn ghost tiny rowmenu-btn" data-rowmenu aria-expanded="false" aria-label="Fler åtgärder">⋯</button><span class="rowmenu-items">${inner}</span></span>`;
 function closeRowMenus(except){
@@ -1765,8 +1778,10 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeMastMenu(); }
 
 // view switching
 $("#adminBtn").addEventListener("click",()=>{
+  closeCompGuide(false);          // kan nås från lathunden; vyn sätts här nedan
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
-  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.remove("hide");
+  $("#logBtn").classList.remove("hide");
+  markCurrentView();
   renderAdmin();
   if((isAdmin||isLeader) && REMOTE){ loadMembers(); }
   if(isAdmin && REMOTE){ loadFakturaMeta(); }
@@ -1777,7 +1792,8 @@ $("#adminBtn").addEventListener("click",()=>{
 $("#logBtn").addEventListener("click",()=>{
   if(!$("#compGuideView").classList.contains("hide")){ closeCompGuide(true); return; }
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
-  $("#logBtn").classList.add("hide"); $("#adminBtn").classList.remove("hide");
+  $("#logBtn").classList.add("hide");
+  markCurrentView();
   renderLog();
 });
 // Lathunden är en egen vy ovanpå den man står i (inloggning, logg eller admin).
@@ -1786,24 +1802,22 @@ let cgReturn=null, cgPrevMast=null;
 function closeCompGuide(restore){
   if(cgDraft) cgExitEdit();
   $("#compGuideView").classList.add("hide");
-  $("#compGuideBtn").classList.remove("hide");
-  // Knapparna lämnas tillbaka till sitt tidigare läge även när vyn inte
-  // återställs (ut-/inloggning sätter ändå om mastheaden strax efter).
-  if(cgPrevMast){
-    $("#adminBtn").classList.toggle("hide",!cgPrevMast.admin);
-    $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
-  }
+  // Tillbaka-knappen lånades av lathunden – lämna tillbaka den till sitt
+  // tidigare läge även när vyn inte återställs (ut-/inloggning sätter ändå om
+  // mastheaden strax efter).
+  if(cgPrevMast) $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
   if(restore) $(cgReturn||"#authView").classList.remove("hide");
   cgReturn=null; cgPrevMast=null;
+  markCurrentView();
 }
 $("#compGuideBtn").addEventListener("click",()=>{
+  if(!$("#compGuideView").classList.contains("hide")) return;   // redan där
   cgReturn=["#authView","#logView","#adminView"].find(s=>!$(s).classList.contains("hide"))||"#authView";
-  cgPrevMast={admin:!$("#adminBtn").classList.contains("hide"), log:!$("#logBtn").classList.contains("hide")};
+  cgPrevMast={log:!$("#logBtn").classList.contains("hide")};
   $(cgReturn).classList.add("hide");
-  $("#adminBtn").classList.add("hide");
   $("#logBtn").classList.remove("hide");   // samma plats, nu med lathunden som mål
   $("#compGuideView").classList.remove("hide");
-  $("#compGuideBtn").classList.add("hide");
+  markCurrentView();
   renderCompGuide();
   window.scrollTo(0,0);
 });
