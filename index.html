@@ -495,7 +495,13 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.98";
+const APP_VERSION = "v.99";
+
+/* Standardantal skott vid tävling. Programmet är fem serier à fem skott där
+   de första fem är övningsskott – 20 skott räknas. Fältet "Antal skott"
+   förifylls därför automatiskt när passet är en tävling (en manuellt ändrad
+   siffra skrivs aldrig över). */
+const TAVLING_SKOTT = 20;
 
 /* Tävlingarna och deras program. Samma lista driver både lathunden (vyn
    "Tävlingar") och rullgardinen vid registrering – ändra på ett ställe.
@@ -716,6 +722,15 @@ function applyCompUI(){
   $("#compNameWrap").classList.toggle("hide",!on);
   $("#poangField").classList.toggle("hide",!on);
   document.querySelector(".quick").classList.toggle("comp",on);
+  presetSkott();
+}
+// Förifyller "Antal skott" med TAVLING_SKOTT under ett tävlingspass: vid start,
+// när tävling slås på och efter varje sparad skytt. Ett eget värde i fältet rörs
+// inte, och när tävlingen slås av plockas den förifyllda siffran bort igen.
+function presetSkott(){
+  const el=$("#q-skott"); if(!el) return;
+  if(pass.tavling){ if(el.value==="") el.value=TAVLING_SKOTT; }
+  else if(el.value===String(TAVLING_SKOTT)) el.value="";
 }
 // Sätt skjutledar-väljaren. Bygger om alternativen varje gång (annars ligger
 // tidigare tillagda namn kvar som dubbletter); ett namn utanför SKJUTLEDARE
@@ -1114,6 +1129,7 @@ async function quickAdd(){
     // reset for next shooter
     if(canPickAny){ const s=$("#q-skytt"); if(s) s.value=""; }
     $("#q-skott").value=""; $("#q-poang").value=""; $("#q-kopt").checked=false;
+    presetSkott();
     (canPickAny ? $("#q-skytt") : $("#q-skott")).focus();
   }catch(err){
     const m=String(err&&err.message||err);
