@@ -139,17 +139,22 @@
 
   /* session list */
   .slist{list-style:none;margin:0;padding:0}
-  .slist li{display:flex;align-items:center;gap:8px 10px;padding:11px 2px;border-bottom:1px solid var(--line-2);font-size:15px;flex-wrap:wrap}
+  /* Rutnat i stallet for flex: innehallet far bryta fritt i vansterkolumnen
+     medan X ligger kvar uppe till hoger. Tidigare hoppade knappen ner pa egen
+     rad sa fort raden hade en pill, vilket gjorde listan ojamn pa telefon. */
+  .slist li{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:10px;row-gap:4px;padding:11px 2px;border-bottom:1px solid var(--line-2);font-size:15px}
   .slist li:last-child{border-bottom:none}
-  .slist .nm{font-weight:600;flex:1;min-width:120px}
+  .slist .cnt{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;min-width:0}
+  .slist .nm{font-weight:600;flex:1;min-width:110px}
   .slist .sk{font-variant-numeric:tabular-nums;font-weight:700;color:var(--forest-d)}
-  .slist .meta{color:var(--ink-soft);font-size:12.5px;flex-basis:100%;order:5}
+  .slist .meta{grid-column:1/-1;color:var(--ink-soft);font-size:12.5px}
   .slist .x{cursor:pointer;color:var(--ink-soft);border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:13px}
   .slist .x:hover{color:var(--rust-d);border-color:#e7c4ab;background:#fbecdf}
 
   .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;letter-spacing:.02em}
   .pill.medlem{background:#dcebf8;color:#155b9e}
   .pill.gast{background:#f6e3d5;color:#8f3f1d}
+  .pill.ammo{background:#f6e3d5;color:#8f3f1d}
   .pill.revisor{background:#e6e2f3;color:#4b3f7a}
   .pill.inaktiv{background:#e4e2db;color:#6a6a5e}
 
@@ -262,6 +267,7 @@
   <!-- ============ LOGGNINGSVY ============ -->
   <div id="logView" class="hide">
     <div class="card">
+      <div class="card-head"><h2>Registrera skytt</h2></div>
       <div class="card-body">
         <!-- Passinställningar (datum/skjutledare/tävling) – bara admin/ledare;
              gäller alla skyttar som registreras. Döljs för medlem. -->
@@ -291,7 +297,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><span class="hint" id="passTotal"></span></div>
+      <div class="card-head"><h2 id="passTitle">Idag</h2><span class="hint" id="passTotal"></span></div>
       <div class="card-body">
         <ul class="slist" id="sessionList"></ul>
         <div class="empty" id="sessionEmpty"><div>Inga skyttar registrerade för <span id="passDateLabel">datumet</span> ännu.</div></div>
@@ -521,7 +527,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.104";
+const APP_VERSION = "v.105";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -819,6 +825,9 @@ function entriesForYear(y){ return entries.filter(e=>yearOf(e)===String(y)); }
 /* ---------- LOG VIEW render ---------- */
 function renderLog(){
   const d=pass.datum||today();
+  // "Idag" bara när passet verkligen är dagens – annars datumet, så att man ser
+  // direkt att man står kvar på ett annat datum.
+  $("#passTitle").textContent = d===today() ? "Idag" : d;
   $("#passDateLabel").textContent=d;
   const rows=entries.filter(e=>e.datum===d).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
   const ul=$("#sessionList"); ul.innerHTML="";
@@ -831,10 +840,12 @@ function renderLog(){
     // Ett ammunitionsköp är pengar och får bara tas bort av admin.
     const canDel = isKop(e) ? isAdmin : (isAdmin || (e.created_by && e.created_by===_uid));
     const li=document.createElement("li");
-    li.innerHTML=`<span class="nm">${esc(displayName(e.skytt_id))}</span>
+    // "Ammunition" och inte "Köp": den senare skiljer sig bara på en bokstav
+    // från "Köpt" på en skjutrad, och de två betyder helt olika saker.
+    li.innerHTML=`<div class="cnt"><span class="nm">${esc(displayName(e.skytt_id))}</span>
       <span class="sk">${isKop(e)?esc(askText(e)):fmt(e.antal_skott)+" skott"}</span>
-      ${isKop(e)?`<span class="pill medlem">Köp</span>`:(e.kopt?`<span class="pill medlem">Köpt</span>`:"")}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
+      ${isKop(e)?`<span class="pill ammo">Ammunition</span>`:(e.kopt?`<span class="pill medlem">Köpt</span>`:"")}</div>
       ${canDel?`<span class="x" data-del="${e.id}">✕</span>`:""}
       ${e.anmarkning?`<span class="meta">${esc(e.anmarkning)}</span>`:""}`;
     ul.appendChild(li);
