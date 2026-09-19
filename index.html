@@ -260,12 +260,11 @@
     .tbl-cards .rowmenu{grid-column:2;grid-row:1;justify-self:end;margin-left:0}
     .tbl-cards .act-cell>.pill{grid-column:1/-1;justify-self:start;margin-top:8px}
     .tbl-cards .faktura-info{grid-column:1/-1;margin-top:6px}
-    /* Dagar/skott/köpta slås ihop till en rad; utestående får stå kvar ensamt
-       eftersom det är den siffra man faktiskt agerar på. */
+    /* Topplistans dagar och skott slås ihop till en rad. Fakturatabellens
+       köpta/utestående står kvar med sina etiketter – där är siffrorna poängen. */
     .tbl-cards .compact-stats{display:block;grid-column:1/-1;color:var(--ink-soft);font-size:13px}
     .tbl-cards td[data-label="Skjutdagar"],
-    .tbl-cards td[data-label="Skott"],
-    .tbl-cards td[data-label="Köpta"]{display:none}
+    .tbl-cards td[data-label="Skott"]{display:none}
     .tbl-cards td[data-label="Utestående"]{font-weight:600;margin-top:3px}
     /* Tabeller som ligger direkt i kortet (medlemslistan) saknar den padding
        som .card-body ger Analys-tabellen – raderna hamnade utanför rubrikens
@@ -273,6 +272,10 @@
     .card > .tbl-cards{padding-left:20px;padding-right:20px}
     /* Verktygsraden: ⋯ mot högerkanten, årsväljaren kvar till vänster. */
     #toolMenu{margin-left:auto}
+    /* Fem flikar ryms inte på en rad. Sidoscroll dolde den sista helt, så de
+       radbryts i stället och delar bredden jämnt. */
+    .seg.admin-tabs{display:flex;flex-wrap:wrap;overflow:visible}
+    .seg.admin-tabs button{flex:1 1 auto;min-width:33%;padding:11px 10px;font-size:13.5px}
     /* Förklaringen till priset får egen rad; annars bryter den mitt i
        meningen direkt efter inmatningsfältet. */
     #priceHint .hint{display:block;margin-top:5px}
@@ -453,6 +456,7 @@
     </div>
     <div class="seg admin-tabs">
       <button data-tab="panelAnalys" class="on">Analys</button>
+      <button data-tab="panelFaktura" id="tabBtnFaktura">Fakturering</button>
       <button data-tab="panelPoster">Alla poster</button>
       <button data-tab="compCard">Tävlingar</button>
       <button data-tab="membersCard" id="tabBtnMembers">Medlemmar</button>
@@ -466,13 +470,29 @@
           <div class="stat"><div class="label">Totalt antal skott</div><div class="v" id="s-total">0</div></div>
           <div class="stat"><div class="label">Skjutdagar</div><div class="v" id="s-days">0</div></div>
           <div class="stat"><div class="label">Aktiva skyttar</div><div class="v" id="s-shooters">0</div></div>
-          <div class="stat"><div class="label">Utestående belopp</div><div class="v" id="s-cost">0</div></div>
         </div>
         <div><div class="label" style="margin-bottom:8px">Skott per månad</div><div class="chart" id="chartMonth"></div></div>
-        <div style="margin-top:20px"><div style="margin-bottom:8px;display:flex;justify-content:flex-end"><button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button></div>
-          <p class="hint" id="priceHint" style="margin:0 2px 8px"></p>
-          <div class="tbl-scroll tbl-cards"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th><th style="text-align:right">Köpta</th><th style="text-align:right">Utestående</th><th></th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
+        <div style="margin-top:20px">
+          <div class="label" style="margin-bottom:8px">Skott per skytt</div>
+          <div class="tbl-scroll tbl-cards"><table><thead><tr><th>Skytt</th><th>Skjutdagar</th><th style="text-align:right">Skott</th></tr></thead><tbody id="shooterTbody"></tbody></table></div>
+          <div class="empty hide" id="shooterEmpty"><div>Inga poster för året.</div></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Fakturering är en egen vy: bara pengar, bara de som köpt något, och
+         bara för admin. Analysvyn bredvid handlar om skytte, inte kronor. -->
+    <div class="card tab-panel hide" id="panelFaktura">
+      <div class="card-head"><h2>Fakturering</h2>
+        <button class="btn ghost tiny hide" id="sendAllFaktura">Skicka alla fakturor</button>
+      </div>
+      <div class="card-body">
+        <div class="stats" style="grid-template-columns:1fr">
+          <div class="stat"><div class="label">Utestående belopp</div><div class="v" id="s-cost">0</div></div>
+        </div>
+        <p class="hint" id="priceHint" style="margin:14px 2px 10px"></p>
+        <div class="tbl-scroll tbl-cards"><table><thead><tr><th>Skytt</th><th style="text-align:right">Köpta skott</th><th style="text-align:right">Utestående</th><th></th></tr></thead><tbody id="fakturaTbody"></tbody></table></div>
+        <div class="empty hide" id="fakturaEmpty"><div>Ingen har köpta skott för året.</div></div>
       </div>
     </div>
 
@@ -634,7 +654,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.118";
+const APP_VERSION = "v.119";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1069,8 +1089,20 @@ function renderAdmin(){
   // per shooter
   const map={};
   yeM.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; if(!isKop(e)){ map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); } map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
+  // Analys: topplista utan pengar.
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
-  $("#shooterTbody").innerHTML=list.map(([n,v])=>{
+  $("#shooterTbody").innerHTML=list.map(([n,v])=>
+    `<tr><td class="name-cell">${esc(nameOf(n))}</td>`+
+    `<td class="compact-stats">${v.dagar.size} ${v.dagar.size===1?"dag":"dagar"} · ${fmt(v.skott)} skott</td>`+
+    `<td class="num" style="text-align:left" data-label="Skjutdagar">${v.dagar.size}</td>`+
+    `<td class="num" data-label="Skott">${fmt(v.skott)}</td></tr>`).join("");
+  $("#shooterEmpty").classList.toggle("hide", list.length>0);
+
+  // Fakturering: bara de som köpt något, sorterat på störst skuld.
+  const pay=Object.entries(map).filter(([,v])=>v.kopta>0)
+    .sort((a,b)=>(b[1].out-a[1].out)||nameOf(a[0]).localeCompare(nameOf(b[0]),"sv"));
+  $("#fakturaEmpty").classList.toggle("hide", pay.length>0);
+  $("#fakturaTbody").innerHTML=pay.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
     const paminnelse=isReminder(fm.faktura_skickad,v.since);
     const email=accountEmail(n);
@@ -1084,12 +1116,12 @@ function renderAdmin(){
       : v.out>0 ? rowMenu(`<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${paminnelse?` data-reminder="1"`:``}>${paminnelse?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>`)+fakturaInfo
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span>`+rowMenu(`<button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`)
       : "";
-    // compact-stats visas bara i kortläget (telefon); cellerna den ersätter
-    // döljs där. På dator är den display:none och ger ingen extra kolumn.
-    const compact=`${v.dagar.size} ${v.dagar.size===1?"dag":"dagar"} · ${fmt(v.skott)} skott · ${fmt(v.kopta)} köpta`;
-    return `<tr><td class="name-cell">${esc(nameOf(n))}</td><td class="compact-stats">${compact}</td><td class="num" style="text-align:left" data-label="Skjutdagar">${v.dagar.size}</td><td class="num" data-label="Skott">${fmt(v.skott)}</td><td class="num" data-label="Köpta">${fmt(v.kopta)}</td><td class="num" data-label="Utestående">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
-  }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
-  $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices()&&REMOTE&&list.some(([,v])=>v.out>0)));
+    return `<tr><td class="name-cell">${esc(nameOf(n))}</td>`+
+      `<td class="num" data-label="Köpta skott">${fmt(v.kopta)}</td>`+
+      `<td class="num" data-label="Utestående">${kr(v.out)}</td>`+
+      `<td class="act-cell">${act}</td></tr>`;
+  }).join("");
+  $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices()&&REMOTE&&pay.some(([,v])=>v.out>0)));
   // Admin redigerar priset direkt här; nya poster fryser priset vid registrering.
   if(isAdmin){
     $("#priceHint").innerHTML=`Pris per köpt skott:
@@ -1796,6 +1828,10 @@ $("#brandHome").addEventListener("click",()=>{ const b=$("#logBtn"); if(!b.class
 $("#a-year").addEventListener("change",()=>{showAllRows=false;renderAdmin();});
 $("#showAllRowsBtn").addEventListener("click",()=>{showAllRows=true;renderAdminTable();});
 function setAdminTab(id){
+  // En dold flik får aldrig bli den valda – en ledare som klickat Fakturering
+  // innan rollen lästes in skulle annars fastna i en tom vy.
+  const btn=document.querySelector(`.admin-tabs button[data-tab="${id}"]`);
+  if(btn && btn.classList.contains("hide")) id="panelAnalys";
   document.querySelectorAll("#adminView .tab-panel").forEach(p=>p.classList.toggle("hide", p.id!==id));
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===id));
 }
@@ -2062,6 +2098,7 @@ async function enterApp(session){
   $("#adminBtn").classList.toggle("hide", !(isAdmin||isLeader));
   $("#logBtn").classList.add("hide");
   $("#tabBtnMembers").classList.toggle("hide", !(isAdmin||isLeader)); // admin + revisor see member list
+  $("#tabBtnFaktura").classList.toggle("hide", !isAdmin);              // fakturering är admins ensak
   $("#addMemberBtn").classList.toggle("hide", !isAdmin);
   $("#dbSettings").classList.toggle("hide", !isAdmin);
   $("#backupBtn").classList.toggle("hide", !isAdmin);
