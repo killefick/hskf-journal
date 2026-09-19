@@ -348,10 +348,10 @@
       </div>
     </div>
     <div class="mast-actions">
-      <button class="icon-btn hide" id="logBtn" title="Tillbaka" aria-label="Tillbaka">←<span class="wide-only"> Tillbaka</span></button>
       <button class="icon-btn menu-toggle" id="menuBtn" aria-expanded="false" aria-controls="mastMenu" aria-label="Meny">☰ Meny</button>
       <div class="mast-menu" id="mastMenu">
         <span id="userLabel" class="hide user-label"></span>
+        <button class="icon-btn" id="homeBtn">Hem</button>
         <button class="icon-btn hide" id="adminBtn">Admin</button>
         <button class="icon-btn" id="compGuideBtn">Tävlingar</button>
         <a class="icon-btn" href="guide.html">Hjälp</a>
@@ -673,7 +673,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.123";
+const APP_VERSION = "v.124";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1705,8 +1705,10 @@ function markCurrentView(){
   const mark=(sel,on)=>{ const el=$(sel); if(!el) return;
     if(on) el.setAttribute("aria-current","page"); else el.removeAttribute("aria-current"); };
   const inGuide=!$("#compGuideView").classList.contains("hide");
+  const inAdmin=!$("#adminView").classList.contains("hide");
   mark("#compGuideBtn", inGuide);
-  mark("#adminBtn", !inGuide && !$("#adminView").classList.contains("hide"));
+  mark("#adminBtn", !inGuide && inAdmin);
+  mark("#homeBtn", !inGuide && !inAdmin);
 }
 
 /* Radmeny i tabellerna: samma knappar på alla skärmar, men under ⋯ på telefon. */
@@ -1778,44 +1780,36 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeMastMenu(); }
 
 // view switching
 $("#adminBtn").addEventListener("click",()=>{
-  closeCompGuide(false);          // kan nås från lathunden; vyn sätts här nedan
+  closeCompGuide();               // kan nås från lathunden; vyn sätts här nedan
   $("#logView").classList.add("hide"); $("#adminView").classList.remove("hide");
-  $("#logBtn").classList.remove("hide");
   markCurrentView();
   renderAdmin();
   if((isAdmin||isLeader) && REMOTE){ loadMembers(); }
   if(isAdmin && REMOTE){ loadFakturaMeta(); }
 });
-// ← Tillbaka ligger alltid på samma plats i mastheaden. Vad den går tillbaka
-// TILL beror på var man står: ur lathunden till vyn man kom från, annars från
-// Admin till inmatningen.
-$("#logBtn").addEventListener("click",()=>{
-  if(!$("#compGuideView").classList.contains("hide")){ closeCompGuide(true); return; }
-  $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
-  $("#logBtn").classList.add("hide");
+// Hem = registreringsvyn, eller inloggningen om man inte är inloggad. Alla
+// vyer nås ur menyn, så det finns ingen tillbaka-knapp vars betydelse skiftar
+// med var man råkar stå.
+$("#homeBtn").addEventListener("click",()=>{
+  closeCompGuide();
+  const inne=!!_uid;
+  $("#adminView").classList.add("hide");
+  $("#authView").classList.toggle("hide", inne);
+  $("#logView").classList.toggle("hide", !inne);
   markCurrentView();
-  renderLog();
+  if(inne) renderLog();
+  window.scrollTo(0,0);
 });
-// Lathunden är en egen vy ovanpå den man står i (inloggning, logg eller admin).
-// cgReturn/cgPrevMast minns vad som ska tillbaka när man trycker ← Tillbaka.
-let cgReturn=null, cgPrevMast=null;
-function closeCompGuide(restore){
+// Lathunden är en egen vy. Den behöver inte minnas var man kom ifrån: man tar
+// sig därifrån via menyn, som alltid har alla destinationer.
+function closeCompGuide(){
   if(cgDraft) cgExitEdit();
   $("#compGuideView").classList.add("hide");
-  // Tillbaka-knappen lånades av lathunden – lämna tillbaka den till sitt
-  // tidigare läge även när vyn inte återställs (ut-/inloggning sätter ändå om
-  // mastheaden strax efter).
-  if(cgPrevMast) $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
-  if(restore) $(cgReturn||"#authView").classList.remove("hide");
-  cgReturn=null; cgPrevMast=null;
   markCurrentView();
 }
 $("#compGuideBtn").addEventListener("click",()=>{
   if(!$("#compGuideView").classList.contains("hide")) return;   // redan där
-  cgReturn=["#authView","#logView","#adminView"].find(s=>!$(s).classList.contains("hide"))||"#authView";
-  cgPrevMast={log:!$("#logBtn").classList.contains("hide")};
-  $(cgReturn).classList.add("hide");
-  $("#logBtn").classList.remove("hide");   // samma plats, nu med lathunden som mål
+  ["#authView","#logView","#adminView"].forEach(sel=>$(sel).classList.add("hide"));
   $("#compGuideView").classList.remove("hide");
   markCurrentView();
   renderCompGuide();
@@ -1855,7 +1849,7 @@ $("#cgSave").addEventListener("click",async()=>{
 });
 // Klick på loggan/rubriken = samma som "Till inmatning", men bara när den knappen
 // är synlig (admin i admin-vyn) — så medlem/revisor/inloggning påverkas inte.
-$("#brandHome").addEventListener("click",()=>{ const b=$("#logBtn"); if(!b.classList.contains("hide")) b.click(); });
+$("#brandHome").addEventListener("click",()=>$("#homeBtn").click());
 $("#a-year").addEventListener("change",()=>{showAllRows=false;renderAdmin();});
 $("#showAllRowsBtn").addEventListener("click",()=>{showAllRows=true;renderAdminTable();});
 function setAdminTab(id){
@@ -2096,10 +2090,10 @@ if("serviceWorker" in navigator){
 /* ---------- Auth (Supabase) ---------- */
 function showAuth(){
   authed=false; isAdmin=false; isLeader=false; entries=[];
-  closeCompGuide(false);   // lathunden får inte ligga kvar ovanpå inloggningen
+  closeCompGuide();        // lathunden får inte ligga kvar ovanpå inloggningen
   $("#authView").classList.remove("hide");
   $("#logView").classList.add("hide"); $("#adminView").classList.add("hide");
-  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
+  $("#adminBtn").classList.add("hide");
   $("#logoutBtn").classList.add("hide"); $("#userLabel").classList.add("hide");
 }
 async function enterApp(session){
@@ -2119,7 +2113,7 @@ async function enterApp(session){
     showBanner("warn",`<b>Fel vid behörighetskontroll.</b> ${esc(e&&e.message||e)}`);
   }
   const me=profName||(session.user.user_metadata&&session.user.user_metadata.full_name)||session.user.email||"";
-  closeCompGuide(false);   // vyerna nedan sätts om från grunden
+  closeCompGuide();        // vyerna nedan sätts om från grunden
   $("#authView").classList.add("hide");
   // Everyone lands in the logging view. Admin & revisor can also open Admin &
   // analys. Revisor logs like an admin (any shooter) but can't manage members
@@ -2127,7 +2121,6 @@ async function enterApp(session){
   $("#logView").classList.remove("hide");
   $("#adminView").classList.add("hide");
   $("#adminBtn").classList.toggle("hide", !(isAdmin||isLeader));
-  $("#logBtn").classList.add("hide");
   $("#tabBtnMembers").classList.toggle("hide", !(isAdmin||isLeader)); // admin + revisor see member list
   $("#tabBtnFaktura").classList.toggle("hide", !isAdmin);              // fakturering är admins ensak
   $("#addMemberBtn").classList.toggle("hide", !isAdmin);
