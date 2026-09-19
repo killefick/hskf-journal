@@ -495,12 +495,12 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.99";
+const APP_VERSION = "v.100";
 
-/* Standardantal skott vid tävling. Programmet är fem serier à fem skott där
-   de första fem är övningsskott – 20 skott räknas. Fältet "Antal skott"
-   förifylls därför automatiskt när passet är en tävling (en manuellt ändrad
-   siffra skrivs aldrig över). */
+/* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
+   Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
+   (en manuellt ändrad siffra skrivs aldrig över). Programraderna i lathunden
+   redigeras separat av admin – den här siffran följer inte med automatiskt. */
 const TAVLING_SKOTT = 20;
 
 /* Tävlingarna och deras program. Samma lista driver både lathunden (vyn
