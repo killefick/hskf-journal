@@ -65,10 +65,13 @@
   @media(min-width:641px){ #userLabel{order:-1} }
   @media(max-width:640px){
     .menu-toggle{display:inline-flex}
+    /* Knappraden och den utfällda menyn ligger mot högerkanten. */
+    .mast-actions{margin-left:auto;justify-content:flex-end}
     /* Menyn fälls ut i mastheaden i stället för att flyta ovanpå den: headern
        har overflow:hidden för dekorationscirkeln, så en absolut placerad panel
-       skulle klippas bort. flex-basis:100% lägger den på egen rad. */
-    .mast-menu{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:8px;margin-top:6px}
+       skulle klippas bort. flex-basis:100% lägger den på egen rad, max-width +
+       margin-left:auto håller den vid högerkanten som en vanlig dropdown. */
+    .mast-menu{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:8px;margin-top:6px;margin-left:auto;max-width:232px}
     .mast-menu.open{display:flex}
     .mast-menu .icon-btn{display:flex;justify-content:flex-start;text-align:left;padding:12px 14px;font-size:15px}
     .mast-menu .user-label{align-self:flex-start;margin:2px 0 4px 2px;font-size:13px}
@@ -584,7 +587,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.109";
+const APP_VERSION = "v.110";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
