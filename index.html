@@ -284,11 +284,11 @@
       </div>
     </div>
     <div class="mast-actions">
-      <button class="icon-btn hide" id="adminBtn">Admin</button>
       <button class="icon-btn hide" id="logBtn">← Tillbaka</button>
       <button class="icon-btn menu-toggle" id="menuBtn" aria-expanded="false" aria-controls="mastMenu" aria-label="Meny">☰ Meny</button>
       <div class="mast-menu" id="mastMenu">
         <span id="userLabel" class="hide user-label"></span>
+        <button class="icon-btn hide" id="adminBtn">Admin</button>
         <button class="icon-btn" id="compGuideBtn">Tävlingar</button>
         <a class="icon-btn" href="guide.html">Hjälp</a>
         <button class="icon-btn hide" id="logoutBtn">Logga ut</button>
@@ -372,7 +372,6 @@
         <h2>Tävlingar</h2>
         <div class="cg-head-btns">
           <button class="btn ghost tiny hide" id="cgEditBtn">✎ Redigera</button>
-          <button class="btn ghost tiny" id="cgBackBtn">← Tillbaka</button>
         </div>
       </div>
       <div class="card-body">
@@ -585,7 +584,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.108";
+const APP_VERSION = "v.109";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1635,7 +1634,11 @@ $("#adminBtn").addEventListener("click",()=>{
   if((isAdmin||isLeader) && REMOTE){ loadMembers(); }
   if(isAdmin && REMOTE){ loadFakturaMeta(); }
 });
+// ← Tillbaka ligger alltid på samma plats i mastheaden. Vad den går tillbaka
+// TILL beror på var man står: ur lathunden till vyn man kom från, annars från
+// Admin till inmatningen.
 $("#logBtn").addEventListener("click",()=>{
+  if(!$("#compGuideView").classList.contains("hide")){ closeCompGuide(true); return; }
   $("#adminView").classList.add("hide"); $("#logView").classList.remove("hide");
   $("#logBtn").classList.add("hide"); $("#adminBtn").classList.remove("hide");
   renderLog();
@@ -1647,26 +1650,26 @@ function closeCompGuide(restore){
   if(cgDraft) cgExitEdit();
   $("#compGuideView").classList.add("hide");
   $("#compGuideBtn").classList.remove("hide");
-  if(restore){
-    $(cgReturn||"#authView").classList.remove("hide");
-    if(cgPrevMast){
-      $("#adminBtn").classList.toggle("hide",!cgPrevMast.admin);
-      $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
-    }
+  // Knapparna lämnas tillbaka till sitt tidigare läge även när vyn inte
+  // återställs (ut-/inloggning sätter ändå om mastheaden strax efter).
+  if(cgPrevMast){
+    $("#adminBtn").classList.toggle("hide",!cgPrevMast.admin);
+    $("#logBtn").classList.toggle("hide",!cgPrevMast.log);
   }
+  if(restore) $(cgReturn||"#authView").classList.remove("hide");
   cgReturn=null; cgPrevMast=null;
 }
 $("#compGuideBtn").addEventListener("click",()=>{
   cgReturn=["#authView","#logView","#adminView"].find(s=>!$(s).classList.contains("hide"))||"#authView";
   cgPrevMast={admin:!$("#adminBtn").classList.contains("hide"), log:!$("#logBtn").classList.contains("hide")};
   $(cgReturn).classList.add("hide");
-  $("#adminBtn").classList.add("hide"); $("#logBtn").classList.add("hide");
+  $("#adminBtn").classList.add("hide");
+  $("#logBtn").classList.remove("hide");   // samma plats, nu med lathunden som mål
   $("#compGuideView").classList.remove("hide");
   $("#compGuideBtn").classList.add("hide");
   renderCompGuide();
   window.scrollTo(0,0);
 });
-$("#cgBackBtn").addEventListener("click",()=>closeCompGuide(true));
 $("#cgEditBtn").addEventListener("click",()=>{
   if(!isAdmin) return;
   cgDraft=TAVLINGAR_DATA.map(t=>({namn:t.namn, program:t.program.slice()}));
