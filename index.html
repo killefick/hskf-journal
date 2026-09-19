@@ -416,7 +416,10 @@
           <div class="field qadd"><label>&nbsp;</label><button class="btn primary big" id="q-add">Lägg till</button></div>
         </div>
         <label class="comp-toggle" id="koptWrap" style="margin-top:12px"><input type="checkbox" id="q-kopt"> Köpt skott (debiteras två gånger per år)</label>
-        <div id="ammoWrap" style="margin-top:12px"><button class="btn ghost" id="ammoBtn">Sälj ammunition</button></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost" id="q-reset">Rensa</button>
+          <span id="ammoWrap"><button class="btn ghost" id="ammoBtn">Sälj ammunition</button></span>
+        </div>
       </div>
     </div>
 
@@ -675,7 +678,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.127";
+const APP_VERSION = "v.128";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1437,6 +1440,19 @@ $("#am-askar").addEventListener("input",ammoSum);
 $("#am-save").addEventListener("click",saveAmmo);
 
 /* ---------- quick add ---------- */
+/* Tömmer inmatningsfälten. Används både av Rensa-knappen och automatiskt efter
+   en sparad rad, så de två aldrig kan glida isär. Passet (datum, skjutledare,
+   tävling) rörs inte – det gäller alla skyttar och ska överleva. */
+function resetQuickForm(){
+  const sel=$("#q-skytt");
+  const canPickAny = isAdmin||isLeader;
+  if(canPickAny && sel && sel.tagName==="SELECT") sel.value="";
+  $("#q-skott").value=""; $("#q-poang").value=""; $("#q-kopt").checked=false;
+  presetSkott();
+  (canPickAny && sel && sel.tagName==="SELECT" ? sel : $("#q-skott")).focus();
+}
+$("#q-reset").addEventListener("click",resetQuickForm);
+
 async function quickAdd(){
   if(!(pass.ledare||"").trim()){
     showBanner("warn","Ange <b>skjutledare</b> för dagens skytte innan du registrerar skyttar – krävs för en giltig journalpost.",4000);
@@ -1467,11 +1483,7 @@ async function quickAdd(){
     const saved=await addRow(row);
     if(REMOTE){ await loadAll(); } else { entries.unshift(saved); }
     renderAll();
-    // reset for next shooter
-    if(canPickAny){ const s=$("#q-skytt"); if(s) s.value=""; }
-    $("#q-skott").value=""; $("#q-poang").value=""; $("#q-kopt").checked=false;
-    presetSkott();
-    (canPickAny ? $("#q-skytt") : $("#q-skott")).focus();
+    resetQuickForm();
   }catch(err){
     const m=String(err&&err.message||err);
     if(/tavling|poang|kopt|column/i.test(m)) showBanner("warn","En kolumn saknas i databasen (tävling/poäng/köpt). Kör migreringen i README (ALTER TABLE) och försök igen.",6000);
