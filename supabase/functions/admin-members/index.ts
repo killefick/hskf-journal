@@ -45,7 +45,10 @@ Deno.serve(async (req) => {
 
   // Revisor = read-only auditor: may read the member list, but every mutating
   // action stays admin-only. (There's one admin for a reason.)
-  const REVISOR_ALLOWED = new Set(["list"]);
+  // createGuest är med här med flit: det är skjutledaren som står vid banan när
+  // en gäst dyker upp. Aktionen rör aldrig auth-API:t och kan bara skapa en
+  // profilrad utan konto, så den ger inte revisorn någon väg till ett login.
+  const REVISOR_ALLOWED = new Set(["list", "createGuest"]);
   if (callerRole !== "admin" && !REVISOR_ALLOWED.has(action)) {
     return json({ ok: false, error: "Forbidden" }, 403);
   }
@@ -93,6 +96,38 @@ Deno.serve(async (req) => {
       const { error: upErr } = await admin.from("profiles").upsert({ id, full_name: full_name ?? "", role });
       if (upErr) throw upErr;
       return json({ ok: true, data: { id, email, full_name: full_name ?? "", role } });
+    }
+
+    // Gästskytt: en person UTAN konto. Skriver bara en profiles-rad med
+    // gast = true och rör aldrig auth — en gäst kan alltså inte bli ett
+    // inloggningsbart konto av misstag. Se docs/supabase-setup.md steg 16.
+    if (action === "createGuest") {
+      const full_name = String(payload.full_name ?? "").trim();
+      const email = String(payload.email ?? "").trim();
+      if (!full_name) return json({ ok: false, error: "Namn saknas" }, 400);
+      if (email && !isEmail(email)) return json({ ok: false, error: "Ogiltig e-post" }, 400);
+
+      // Idempotent på namn: samma gäst ska inte kunna läggas upp två gånger
+      // bara för att två ledare registrerar henne samma dag.
+      const { data: dup, error: dErr } = await admin
+        .from("profiles").select("id, full_name, email")
+        .eq("gast", true).eq("active", true).ilike("full_name", full_name);
+      if (dErr) throw dErr;
+      if (dup && dup.length) {
+        const g = dup[0];
+        // Fyll på e-posten om gästen saknade den och en angavs nu.
+        if (email && !g.email) {
+          const { error: eErr } = await admin.from("profiles").update({ email }).eq("id", g.id);
+          if (eErr) throw eErr;
+        }
+        return json({ ok: true, data: { id: g.id, full_name: g.full_name, email: email || g.email || null, gast: true, existing: true } });
+      }
+
+      const id = crypto.randomUUID();
+      const { error } = await admin.from("profiles")
+        .insert({ id, full_name, role: "member", active: true, gast: true, email: email || null });
+      if (error) throw error;
+      return json({ ok: true, data: { id, full_name, email: email || null, gast: true, existing: false } });
     }
 
     if (action === "setRole") {

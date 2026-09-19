@@ -489,3 +489,61 @@ Eller testa utifrån, samma väg som en utloggad besökare (anon-nyckeln finns i
 curl "https://<ref>.supabase.co/rest/v1/app_settings?select=key&key=eq.pris_per_skott" \
   -H "apikey: <anon-nyckeln>"
 ```
+
+
+## 16. Gästskyttar (2026-09-19)
+
+En gästskytt är en **person utan konto**: en `profiles`-rad med `gast = true`
+och inget motsvarande `auth.users`-konto. Därmed fungerar allt som redan är
+nycklat på `profiles(id)` — journalrader, fakturarader, namnuppslag, backup —
+oförändrat för gäster. Se `docs/superpowers/specs/2026-09-19-gastskyttar-design.md`.
+
+Kör i SQL-editorn **innan** den nya `index.html` deployas (klienten klarar båda
+ordningarna, men väljaren visar inga gäster förrän vyn har kolumnen `gast`):
+
+```sql
+-- 1. profiles blir "person" i stället för "konto": släpp FK:n mot auth.users.
+--    Utan det kan en profil inte existera utan ett inloggningskonto.
+--    Constraintens namn slås upp så att det fungerar oavsett vad den heter här.
+do $$
+declare c text;
+begin
+  select conname into c from pg_constraint
+   where conrelid = 'public.profiles'::regclass
+     and contype = 'f'
+     and confrelid = 'auth.users'::regclass;
+  if c is not null then
+    execute format('alter table public.profiles drop constraint %I', c);
+  end if;
+end $$;
+
+-- 2. Gästmarkering + valfri e-post (medlemmens e-post bor kvar i auth.users).
+alter table public.profiles add column if not exists gast boolean not null default false;
+alter table public.profiles add column if not exists email text;
+
+-- 3. member_directory exponerar gast så klienten kan dela upp skyttväljaren och
+--    hålla gäster utanför årsstatistiken. Fortfarande aldrig roll eller e-post.
+drop view if exists public.member_directory;
+create view public.member_directory
+  with (security_invoker = off) as
+  select id, full_name, active, gast from public.profiles;
+
+revoke select on public.member_directory from anon;
+grant select on public.member_directory to authenticated;
+```
+
+Ingen backfill: befintliga profiler får `gast = false`. Redeploya
+`admin-members` efter (den får aktionen `createGuest`).
+
+> **VIKTIGT efter den här migreringen.** `profiles`-raden städas inte längre
+> automatiskt när ett konto raderas. `admin-members` gör redan
+> `delete from profiles` efter `deleteUser` i både `delete` och `forceDelete`
+> — de raderna får inte tas bort. Radera därför **alltid medlemmar i appen**,
+> aldrig direkt i Supabase-dashboarden. Städa en föräldralös profil som ändå
+> uppstått (den syns som medlem i väljaren trots att kontot är borta):
+>
+> ```sql
+> select p.id, p.full_name from public.profiles p
+>  where p.gast = false
+>    and not exists (select 1 from auth.users u where u.id = p.id);
+> ```

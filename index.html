@@ -422,6 +422,18 @@
   <div class="m-foot"><button class="btn ghost" id="e-cancel">Avbryt</button><button class="btn primary" id="e-save">Spara</button></div>
 </div></div>
 
+<!-- GUEST MODAL -->
+<div class="modal-bg" id="guestModal"><div class="modal">
+  <div class="m-head"><h3>Ny gästskytt</h3></div>
+  <div class="m-body">
+    <p class="hint">En gästskytt är en skytt utan konto i appen – t.ex. en deltagare från en annan förening. Gästen syns i dagens skytte, i loggen och i tävlingsresultaten, men räknas inte in i föreningens årsstatistik.</p>
+    <div class="field"><label for="g-namn">Namn</label><input type="text" id="g-namn" autocomplete="off" enterkeyhint="next"></div>
+    <div class="field"><label for="g-epost">E-post (valfri)</label><input type="email" id="g-epost" autocomplete="off" inputmode="email" placeholder="–"></div>
+    <p class="hint" id="g-err" style="color:#b00020"></p>
+  </div>
+  <div class="m-foot"><button class="btn ghost" id="g-cancel">Avbryt</button><button class="btn primary" id="g-save">Lägg till</button></div>
+</div></div>
+
 <!-- DB SETTINGS MODAL -->
 <div class="modal-bg" id="dbModal"><div class="modal">
   <div class="m-head"><h3>Databas (Supabase)</h3></div>
@@ -495,13 +507,16 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.102";
+const APP_VERSION = "v.103";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
    (en manuellt ändrad siffra skrivs aldrig över). Programraderna i lathunden
    redigeras separat av admin – den här siffran följer inte med automatiskt. */
 const TAVLING_SKOTT = 20;
+
+/* Sentinelvärde för "➕ Ny gästskytt…" i skyttväljaren – aldrig ett riktigt id. */
+const GUEST_NEW = "__nygast__";
 
 /* Tävlingarna och deras program. Samma lista driver både lathunden (vyn
    "Tävlingar") och rullgardinen vid registrering – ändra på ett ställe.
@@ -684,21 +699,34 @@ async function loadAll(){
 let dirById = new Map();
 async function loadDirectory(){
   if(!REMOTE){ dirById = new Map(); return; }
-  const {data,error}=await sb.from("member_directory").select("id,full_name,active");
+  // gast tillkom i migrering 16 (docs/supabase-setup.md). Faller tillbaka på den
+  // gamla kolumnuppsättningen så att appen fungerar oavsett om SQL:en körts än –
+  // utan det skulle en deploy före migreringen släcka hela skyttväljaren.
+  let {data,error}=await sb.from("member_directory").select("id,full_name,active,gast");
+  if(error){ ({data,error}=await sb.from("member_directory").select("id,full_name,active")); }
   if(error){ showBanner("warn","Kunde inte läsa medlemskatalogen: "+esc(error.message)); return; }
-  dirById = new Map((data||[]).map(r=>[r.id, {name:r.full_name||"", active:r.active!==false}]));
+  dirById = new Map((data||[]).map(r=>[r.id, {name:r.full_name||"", active:r.active!==false, gast:r.gast===true}]));
 }
 function nameOf(id){ return dirById.get(id)?.name || "(okänd)"; }
-// Active members sorted by name, for the logging/edit pickers.
+const isGuestId = id => dirById.get(id)?.gast===true;
+// Namn för listor och tabeller. nameOf lämnas rent med flit: fakturamejl och
+// bekräftelsedialoger ska säga personens namn, inte "Anna Svensson (gäst)".
+const displayName = id => isGuestId(id) ? nameOf(id)+" (gäst)" : nameOf(id);
+// Active members sorted by name, for the logging/edit pickers. Gäster ligger i
+// en egen grupp (guestOptions) så att de inte blandas in bland medlemmarna.
 function directoryOptions(){
-  return [...dirById.entries()].filter(([,v])=>v.active).map(([id,v])=>[id,v.name])
+  return [...dirById.entries()].filter(([,v])=>v.active&&!v.gast).map(([id,v])=>[id,v.name])
+    .sort((a,b)=>a[1].localeCompare(b[1],"sv"));
+}
+function guestOptions(){
+  return [...dirById.entries()].filter(([,v])=>v.active&&v.gast).map(([id,v])=>[id,v.name])
     .sort((a,b)=>a[1].localeCompare(b[1],"sv"));
 }
 // Edit picker = active members PLUS the entry's current shooter even if now
 // inactive, so editing an old entry never silently reassigns it.
 function editPickerOptions(currentId){
-  const opts=directoryOptions();
-  if(currentId && !opts.some(([id])=>id===currentId)) opts.unshift([currentId, nameOf(currentId)+" (inaktiv)"]);
+  const opts=directoryOptions().concat(guestOptions().map(([id,nm])=>[id,nm+" (gäst)"]));
+  if(currentId && !opts.some(([id])=>id===currentId)) opts.unshift([currentId, displayName(currentId)+" (inaktiv)"]);
   return opts;
 }
 async function addRow(row){
@@ -779,7 +807,7 @@ function renderLog(){
     // Mirrors the RLS delete policy (created_by = auth.uid() or is_admin()).
     const canDel = isAdmin || (e.created_by && e.created_by===_uid);
     const li=document.createElement("li");
-    li.innerHTML=`<span class="nm">${esc(nameOf(e.skytt_id))}</span>
+    li.innerHTML=`<span class="nm">${esc(displayName(e.skytt_id))}</span>
       <span class="sk">${fmt(e.antal_skott)} skott</span>
       ${e.kopt?`<span class="pill medlem">Köpt</span>`:""}
       ${(e.poang!=null&&e.poang!=="")?`<span class="sk" style="color:var(--rust-d)">${fmt(e.poang)} p</span>`:""}
@@ -866,10 +894,13 @@ function renderAdmin(){
   refreshYears();
   const y=$("#a-year").value||currentYearStr();
   const ye=entriesForYear(y);
-  const tot=ye.reduce((s,e)=>s+(+e.antal_skott||0),0);
-  const days=new Set(ye.map(e=>e.datum)).size;
-  const shooters=new Set(ye.map(e=>e.skytt_id).filter(Boolean));
-  const costTot=ye.reduce((s,e)=>s+rowOutstanding(e),0);
+  // Gäster är inte föreningens skyttar: de syns i pass, logg och tävlingsresultat
+  // men räknas inte i årets nyckeltal, diagram eller skyttetabell.
+  const yeM=ye.filter(e=>!isGuestId(e.skytt_id));
+  const tot=yeM.reduce((s,e)=>s+(+e.antal_skott||0),0);
+  const days=new Set(yeM.map(e=>e.datum)).size;
+  const shooters=new Set(yeM.map(e=>e.skytt_id).filter(Boolean));
+  const costTot=yeM.reduce((s,e)=>s+rowOutstanding(e),0);
   $("#s-total").textContent=fmt(tot);
   $("#s-days").textContent=fmt(days);
   $("#s-shooters").textContent=fmt(shooters.size);
@@ -877,11 +908,11 @@ function renderAdmin(){
   // per month
   const months=["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
   const msum=Array(12).fill(0);
-  ye.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
+  yeM.forEach(e=>{const m=+(e.datum||"0-00").slice(5,7)-1; if(m>=0&&m<12)msum[m]+=(+e.antal_skott||0);});
   $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#2079cc");
   // per shooter
   const map={};
-  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
+  yeM.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
@@ -933,7 +964,7 @@ function renderAdminTable(){
   btn.textContent=`Visa alla (${rows.length})`;
   $("#adminTbody").innerHTML=shown.map(e=>{
     return `<tr>
-      <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(nameOf(e.skytt_id))}</td>
+      <td style="white-space:nowrap">${e.datum||""}</td><td>${esc(displayName(e.skytt_id))}</td>
       <td class="num">${fmt(e.antal_skott)}</td>
       <td>${e.kopt?"Ja":"–"}</td>
       <td class="num">${(e.poang!=null&&e.poang!=="")?fmt(e.poang):""}</td>
@@ -1085,7 +1116,7 @@ function renderComp(){
     return `<div class="comp-group"><h3>${esc(name)} <span class="hint">(${list.length})</span></h3>`+
     `<div class="tbl-scroll"><table>`+
     `<thead><tr><th>Datum</th><th>Skytt</th><th style="text-align:right">Poäng</th></tr></thead>`+
-    `<tbody>${list.map(e=>{const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;const win=!isOvning&&p!=null&&p===maxP;return `<tr${win?' class="comp-win"':''}><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(nameOf(e.skytt_id))}</td><td class="num">${p!=null?fmt(p):""}</td></tr>`;}).join("")}</tbody>`+
+    `<tbody>${list.map(e=>{const p=(e.poang!=null&&e.poang!=="")?+e.poang:null;const win=!isOvning&&p!=null&&p===maxP;return `<tr${win?' class="comp-win"':''}><td style="white-space:nowrap">${e.datum||""}</td><td>${esc(displayName(e.skytt_id))}</td><td class="num">${p!=null?fmt(p):""}</td></tr>`;}).join("")}</tbody>`+
     `</table></div></div>`;
   }).join("");
 }
@@ -1095,8 +1126,12 @@ function renderAll(){ renderLog(); if(!$("#adminView").classList.contains("hide"
 function renderSkyttPicker(){
   const wrap=$("#q-skytt-wrap"); if(!wrap) return;
   if(isAdmin||isLeader){
+    const opt=([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`;
+    const gaster=guestOptions();
     wrap.innerHTML=`<select id="q-skytt"><option value="">Välj skytt…</option>`+
-      directoryOptions().map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join("")+
+      `<option value="${GUEST_NEW}">➕ Ny gästskytt…</option>`+
+      `<optgroup label="Medlemmar">`+directoryOptions().map(opt).join("")+`</optgroup>`+
+      (gaster.length?`<optgroup label="Gäster">`+gaster.map(opt).join("")+`</optgroup>`:``)+
       `</select>`;
   } else {
     // Medlem registrerar alltid sig själv – behåll elementet (quickAdd läser
@@ -1105,6 +1140,46 @@ function renderSkyttPicker(){
   }
   $("#qSkyttField").classList.toggle("hide", !(isAdmin||isLeader));
 }
+
+/* ---------- gästskytt ---------- */
+// Sentinelvärde i skyttväljaren. En gäst är en person utan konto (profiles-rad
+// med gast = true); se docs/superpowers/specs/2026-09-19-gastskyttar-design.md.
+function openGuestModal(){
+  $("#g-namn").value=""; $("#g-epost").value=""; $("#g-err").textContent="";
+  $("#guestModal").classList.add("open");
+  $("#g-namn").focus();
+}
+// Stänger dialogen och lämnar väljaren på rätt skytt: den nya gästen om en
+// skapades, annars tomt val (sentinelvärdet får aldrig bli kvar i fältet).
+function closeGuestModal(valj){
+  $("#guestModal").classList.remove("open");
+  const sel=$("#q-skytt"); if(sel&&sel.tagName==="SELECT") sel.value=valj||"";
+}
+async function saveGuest(){
+  const full_name=$("#g-namn").value.trim(), email=$("#g-epost").value.trim();
+  if(!full_name){ $("#g-err").textContent="Ange ett namn."; $("#g-namn").focus(); return; }
+  if(!REMOTE){ $("#g-err").textContent="Gästskyttar kräver databasläge (Supabase)."; return; }
+  const btn=$("#g-save"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Sparar…"; $("#g-err").textContent="";
+  const r=await sb.functions.invoke("admin-members",{body:{action:"createGuest",full_name,email}});
+  btn.disabled=false; btn.textContent=lbl;
+  if(r.error||!r.data?.ok){ $("#g-err").textContent=await fnErr(r,"Kunde inte lägga till gästen"); return; }
+  const g=r.data.data||{};
+  await loadDirectory(); renderSkyttPicker();
+  closeGuestModal(g.id);
+  showBanner("ok",g.existing?`${esc(full_name)} fanns redan som gäst och är vald.`:`Gästskytt ${esc(full_name)} tillagd.`,4000);
+  $("#q-skott").focus();
+}
+$("#g-cancel").addEventListener("click",()=>closeGuestModal(""));
+$("#guestModal").addEventListener("click",e=>{if(e.target.id==="guestModal")closeGuestModal("");});
+$("#g-save").addEventListener("click",saveGuest);
+$("#g-namn").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#g-epost").focus();}});
+$("#g-epost").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();saveGuest();}});
+// Delegerat: väljaren byggs om vid varje renderSkyttPicker, så lyssnaren sitter
+// på omslaget som ligger kvar.
+$("#q-skytt-wrap").addEventListener("change",e=>{
+  if(e.target&&e.target.id==="q-skytt"&&e.target.value===GUEST_NEW) openGuestModal();
+});
 
 /* ---------- quick add ---------- */
 async function quickAdd(){
@@ -1116,6 +1191,7 @@ async function quickAdd(){
   const canPickAny = isAdmin||isLeader;
   const skytt_id = canPickAny ? (skyttEl.value||"") : (skyttEl.dataset.id||"");
   const skott=$("#q-skott").value;
+  if(skytt_id===GUEST_NEW){ openGuestModal(); return; }
   if(!skytt_id){ if(canPickAny) skyttEl.focus(); showBanner("warn","Välj en skytt."); return; }
   if(skott===""||+skott<0){ $("#q-skott").focus(); return; }
   const isComp=!!pass.tavling;
@@ -1184,18 +1260,18 @@ function summaryRows(ye,y){
 function logHeader(){ return ["Datum","Skytt","Antal skott","Köpt","Betald","Poäng","Skjutledare","Tävling","Anmärkning","Kostnad (kr)"]; }
 function logRows(ye){
   return ye.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||""))
-    .map(e=>[e.datum,nameOf(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
+    .map(e=>[e.datum,displayName(e.skytt_id),+e.antal_skott||0,e.kopt?"Ja":"",e.betald?"Ja":"",(e.poang!=null&&e.poang!=="")?+e.poang:"",e.skjutledare,e.tavling_namn||"",e.anmarkning,Math.round(rowCost(e)*100)/100]);
 }
 function payRows(ye){
   const map={};
-  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={kopta:0,out:0,paid:0}; map[k].kopta+=koptaSkott(e); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e);});
+  ye.forEach(e=>{const k=e.skytt_id; if(!k||isGuestId(k))return; if(!map[k])map[k]={kopta:0,out:0,paid:0}; map[k].kopta+=koptaSkott(e); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e);});
   return Object.entries(map).filter(([,v])=>v.kopta>0).sort((a,b)=>nameOf(a[0]).localeCompare(nameOf(b[0]),"sv"))
     .map(([n,v])=>[nameOf(n),v.kopta,Math.round(v.out*100)/100,Math.round(v.paid*100)/100]);
 }
 function compResultRows(ye){
   return ye.filter(e=>e.tavling||(e.poang!=null&&e.poang!==""))
     .slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||((+b.poang||0)-(+a.poang||0)))
-    .map(e=>[e.datum,e.tavling_namn||"",nameOf(e.skytt_id),(e.poang!=null&&e.poang!=="")?+e.poang:""]);
+    .map(e=>[e.datum,e.tavling_namn||"",displayName(e.skytt_id),(e.poang!=null&&e.poang!=="")?+e.poang:""]);
 }
 $("#exportCsv").addEventListener("click",()=>{
   const y=$("#a-year").value; const ye=entriesForYear(y);
@@ -1270,9 +1346,11 @@ $("#restoreFile").addEventListener("change",async ev=>{
   if(!backup||backup.meta?.app!=="hskf-journal"||backup.meta?.format!==1||!Array.isArray(backup.skjuttillfallen)||!Array.isArray(backup.skytt_faktura)){
     showBanner("warn","Det här är ingen giltig HSKF-säkerhetskopia."); return;
   }
-  const mem=await sb.functions.invoke("admin-members",{body:{action:"list"}});
-  if(mem.error||!mem.data?.ok){ showBanner("warn","Kunde inte läsa medlemmar för återställning."); return; }
-  const ids=new Set((mem.data.data||[]).map(m=>m.id));
+  // Bygg id-listan ur katalogen, inte ur kontolistan: gäster har ingen
+  // auth-användare och deras journalrader skulle annars tyst hoppas över.
+  await loadDirectory();
+  const ids=new Set(dirById.keys());
+  if(!ids.size){ showBanner("warn","Kunde inte läsa personregistret för återställning."); return; }
   const jOk=backup.skjuttillfallen.filter(r=>r&&ids.has(r.skytt_id));
   const fOk=backup.skytt_faktura.filter(r=>r&&ids.has(r.skytt_id));
   const skipped=(backup.skjuttillfallen.length-jOk.length)+(backup.skytt_faktura.length-fOk.length);
