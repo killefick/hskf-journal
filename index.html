@@ -495,7 +495,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.101";
+const APP_VERSION = "v.102";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -576,6 +576,16 @@ const rowOutstanding = e => (e.kopt && !e.betald) ? (+e.antal_skott||0) * rowPri
 const rowPaid = e => (e.kopt && e.betald) ? (+e.antal_skott||0) * rowPris(e) : 0;          // redan betalt
 const koptaSkott = e => e.kopt ? (+e.antal_skott||0) : 0;
 const hasPrices = () => +PRIS_PER_SKOTT > 0;
+/* När en post skapades, som tidsstämpel. Rader utan created_at (äldre lokal
+   data) räknas som urgamla så att de behåller sitt tidigare beteende. */
+const debtStamp = e => Date.parse(e.created_at||0)||0;
+/* skytt_faktura har en rad per skytt utan årtal, så faktura_skickad betyder
+   bara "en faktura har någon gång gått ut till den här personen" – inte att
+   just den nuvarande skulden är fakturerad. Utan den här jämförelsen blev varje
+   ny skuld en "påminnelse" så fort skytten fått en faktura en enda gång.
+   Det är en påminnelse först när fakturan skickades EFTER att den senaste
+   obetalda posten skapades. */
+const isReminder = (skickad, since) => !!skickad && Date.parse(skickad) > (since||0);
 // Delat pris i app_settings (nyckel pris_per_skott). Saknas tabellen/raden
 // används standardvärdet ovan. Lokalt läge sparar i localStorage.
 async function loadPrice(){
@@ -871,10 +881,11 @@ function renderAdmin(){
   $("#chartMonth").innerHTML=barChart(months.map((m,i)=>[m,msum[i]]),"#2079cc");
   // per shooter
   const map={};
-  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e);});
+  ye.forEach(e=>{const k=e.skytt_id; if(!k)return; if(!map[k])map[k]={skott:0,dagar:new Set(),out:0,paid:0,kopta:0,since:0}; map[k].skott+=(+e.antal_skott||0); map[k].dagar.add(e.datum); map[k].out+=rowOutstanding(e); map[k].paid+=rowPaid(e); map[k].kopta+=koptaSkott(e); if(e.kopt&&!e.betald) map[k].since=Math.max(map[k].since,debtStamp(e));});
   const list=Object.entries(map).sort((a,b)=>b[1].skott-a[1].skott);
   $("#shooterTbody").innerHTML=list.map(([n,v])=>{
     const fm=fakturaMeta[n]||{};
+    const paminnelse=isReminder(fm.faktura_skickad,v.since);
     const email=accountEmail(n);
     const fakturaInfo=(isAdmin&&hasPrices()&&REMOTE&&v.out>0)
       ? `<div style="margin-top:4px;font-weight:400">`
@@ -883,7 +894,7 @@ function renderAdmin(){
         + `</div>`
       : "";
     const act = !isAdmin||!hasPrices() ? ""
-      : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${fm.faktura_skickad?` data-reminder="1"`:``}>${fm.faktura_skickad?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
+      : v.out>0 ? `<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${paminnelse?` data-reminder="1"`:``}>${paminnelse?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>${fakturaInfo}`
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span><button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`
       : "";
     return `<tr><td>${esc(nameOf(n))}</td><td class="num" style="text-align:left">${v.dagar.size}</td><td class="num">${fmt(v.skott)}</td><td class="num">${fmt(v.kopta)}</td><td class="num">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
@@ -1480,17 +1491,18 @@ $("#shooterTbody").addEventListener("click",async e=>{
 $("#sendAllFaktura").addEventListener("click",async()=>{
   if(!isAdmin) return;
   const y=$("#a-year").value||currentYearStr();
-  const out={};
-  entriesForYear(y).forEach(e=>{const k=e.skytt_id; if(!k)return; out[k]=(out[k]||0)+rowOutstanding(e);});
+  const out={}, since={};
+  entriesForYear(y).forEach(e=>{const k=e.skytt_id; if(!k)return; out[k]=(out[k]||0)+rowOutstanding(e); if(e.kopt&&!e.betald) since[k]=Math.max(since[k]||0,debtStamp(e));});
   const targets=Object.keys(out).filter(n=>out[n]>0);
   if(!targets.length){ showBanner("warn","Inga skyttar med kvarstående belopp."); return; }
+  const invoiced=n=>isReminder(fakturaMeta[n]&&fakturaMeta[n].faktura_skickad,since[n]);
   const missing=targets.filter(n=>!accountEmail(n));
-  const already=targets.filter(n=>accountEmail(n)&&fakturaMeta[n]&&fakturaMeta[n].faktura_skickad);
+  const already=targets.filter(n=>accountEmail(n)&&invoiced(n));
   let skipAlready=false;
   if(already.length){
     skipAlready=!confirm(`Faktura har redan skickats till: ${already.map(nameOf).join(", ")}.\nOK = skicka igen även till dem. Avbryt = hoppa över dem och skicka till övriga.`);
   }
-  const recipients=targets.filter(n=>accountEmail(n)&&!(skipAlready&&fakturaMeta[n]&&fakturaMeta[n].faktura_skickad));
+  const recipients=targets.filter(n=>accountEmail(n)&&!(skipAlready&&invoiced(n)));
   if(!recipients.length){ showBanner("warn","Inga mottagare att skicka till."); return; }
   if(!confirm(`Skicka faktura till ${recipients.length} skytt(ar)?${missing.length?` (${missing.length} saknar e-post och hoppas över)`:""}`)) return;
   let sent=0, failed=0;
