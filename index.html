@@ -61,12 +61,23 @@
   /* Hamburgaren visas bara på smal skärm; på dator ligger knapparna kvar i
      raden tack vare display:contents på .mast-menu. */
   .menu-toggle{display:none;font-size:16px;line-height:1}
+  /* Text som bara visas på bred skärm. Måste deklareras FÖRE mediafrågan nedan,
+     annars skriver basregeln över den vid samma specificitet. */
+  .wide-only{display:inline}
   .mast-menu{display:contents}
   @media(min-width:641px){ #userLabel{order:-1} }
   @media(max-width:640px){
     .menu-toggle{display:inline-flex}
-    /* Knappraden och den utfällda menyn ligger mot högerkanten. */
-    .mast-actions{margin-left:auto;justify-content:flex-end}
+    /* Knapparna ska ligga uppe till höger bredvid rubriken i ALLA vyer, inte
+       bara när de råkar få plats. Varumärket krymper och ← Tillbaka blir en
+       ren pil, annars trycks raden ner under titeln så fort båda syns. */
+    .wide-only{display:none}
+    .mast-inner{flex-wrap:nowrap;align-items:flex-start;gap:10px}
+    .mast-brand{min-width:0;gap:10px}
+    .mast-logo{width:44px;height:44px}
+    header.masthead h1{font-size:21px;margin-bottom:3px}
+    header.masthead .sub{font-size:11.5px}
+    .mast-actions{flex:none;margin-left:auto;justify-content:flex-end}
     /* Menyn fälls ut i mastheaden i stället för att flyta ovanpå den: headern
        har overflow:hidden för dekorationscirkeln, så en absolut placerad panel
        skulle klippas bort. flex-basis:100% lägger den på egen rad, max-width +
@@ -287,7 +298,7 @@
       </div>
     </div>
     <div class="mast-actions">
-      <button class="icon-btn hide" id="logBtn">← Tillbaka</button>
+      <button class="icon-btn hide" id="logBtn" title="Tillbaka" aria-label="Tillbaka">←<span class="wide-only"> Tillbaka</span></button>
       <button class="icon-btn menu-toggle" id="menuBtn" aria-expanded="false" aria-controls="mastMenu" aria-label="Meny">☰ Meny</button>
       <div class="mast-menu" id="mastMenu">
         <span id="userLabel" class="hide user-label"></span>
@@ -587,7 +598,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.110";
+const APP_VERSION = "v.111";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
