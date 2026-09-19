@@ -271,6 +271,8 @@
        som .card-body ger Analys-tabellen – raderna hamnade utanför rubrikens
        linje. Samma 20 px som .card-head. */
     .card > .tbl-cards{padding-left:20px;padding-right:20px}
+    /* Verktygsraden: ⋯ mot högerkanten, årsväljaren kvar till vänster. */
+    #toolMenu{margin-left:auto}
     /* Förklaringen till priset får egen rad; annars bryter den mitt i
        meningen direkt efter inmatningsfältet. */
     #priceHint .hint{display:block;margin-top:5px}
@@ -434,12 +436,20 @@
     <div class="admin-toolbar">
       <label for="a-year" style="margin:0">År</label>
       <select id="a-year" style="width:auto"></select>
-      <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
-      <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
-      <button class="btn ghost tiny hide" id="backupBtn">⤓ Backup</button>
-      <button class="btn ghost tiny hide" id="restoreBtn">⤴ Restore</button>
       <input type="file" id="restoreFile" accept="application/json" class="hide">
-      <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
+      <!-- Export/backup/databas ligger inline på dator och under ⋯ på telefon,
+           samma komponent som radmenyerna i tabellerna. Årsväljaren står kvar
+           synlig: den är ett filter man byter ofta och visar aktuellt läge. -->
+      <span class="rowmenu" id="toolMenu">
+        <button class="btn ghost tiny rowmenu-btn" data-rowmenu aria-expanded="false" aria-label="Fler åtgärder">⋯</button>
+        <span class="rowmenu-items">
+          <button class="btn ghost tiny" id="exportCsv">⤓ CSV</button>
+          <button class="btn ghost tiny" id="exportXlsx">⤓ Excel</button>
+          <button class="btn ghost tiny hide" id="backupBtn">⤓ Backup</button>
+          <button class="btn ghost tiny hide" id="restoreBtn">⤴ Restore</button>
+          <button class="btn ghost tiny" id="dbSettings">⚙ Databas</button>
+        </span>
+      </span>
     </div>
     <div class="seg admin-tabs">
       <button data-tab="panelAnalys" class="on">Analys</button>
@@ -624,7 +634,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.117";
+const APP_VERSION = "v.118";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
