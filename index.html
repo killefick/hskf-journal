@@ -228,6 +228,8 @@
   }
   .act-cell{text-align:right;white-space:nowrap}
   .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Sammanslagen statistikrad som bara används i kortläget på telefon. */
+  .compact-stats{display:none}
   /* Breda tabeller blir kort på telefon. Utan det hamnar åtgärdskolumnen
      utanför skärmen och radmenyn går inte ens att nå. Rubrikraden faller bort;
      varje cell får sin etikett ur data-label i stället. */
@@ -250,6 +252,13 @@
     .tbl-cards .rowmenu.open{grid-column:1/-1;grid-row:auto;justify-self:stretch;width:100%;margin-top:8px}
     .tbl-cards .act-cell>.pill{grid-column:1/-1;justify-self:start;margin-top:8px}
     .tbl-cards .faktura-info{grid-column:1/-1;margin-top:6px}
+    /* Dagar/skott/köpta slås ihop till en rad; utestående får stå kvar ensamt
+       eftersom det är den siffra man faktiskt agerar på. */
+    .tbl-cards .compact-stats{display:block;grid-column:1/-1;color:var(--ink-soft);font-size:13px}
+    .tbl-cards td[data-label="Skjutdagar"],
+    .tbl-cards td[data-label="Skott"],
+    .tbl-cards td[data-label="Köpta"]{display:none}
+    .tbl-cards td[data-label="Utestående"]{font-weight:600;margin-top:3px}
     /* Förklaringen till priset får egen rad; annars bryter den mitt i
        meningen direkt efter inmatningsfältet. */
     #priceHint .hint{display:block;margin-top:5px}
@@ -603,7 +612,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.113";
+const APP_VERSION = "v.114";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1053,7 +1062,10 @@ function renderAdmin(){
       : v.out>0 ? rowMenu(`<button class="btn ghost tiny" data-faktura="${esc(n)}" data-y="${y}"${paminnelse?` data-reminder="1"`:``}>${paminnelse?"Skicka påminnelse":"Skicka faktura"}</button> <button class="btn ghost tiny" data-paid="${esc(n)}" data-y="${y}">Markera betald</button>`)+fakturaInfo
       : v.paid>0 ? `<span class="pill medlem" style="margin-right:6px">✓ betald</span>`+rowMenu(`<button class="btn ghost tiny" data-unpaid="${esc(n)}" data-y="${y}">Ångra</button>`)
       : "";
-    return `<tr><td class="name-cell">${esc(nameOf(n))}</td><td class="num" style="text-align:left" data-label="Skjutdagar">${v.dagar.size}</td><td class="num" data-label="Skott">${fmt(v.skott)}</td><td class="num" data-label="Köpta">${fmt(v.kopta)}</td><td class="num" data-label="Utestående">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
+    // compact-stats visas bara i kortläget (telefon); cellerna den ersätter
+    // döljs där. På dator är den display:none och ger ingen extra kolumn.
+    const compact=`${v.dagar.size} ${v.dagar.size===1?"dag":"dagar"} · ${fmt(v.skott)} skott · ${fmt(v.kopta)} köpta`;
+    return `<tr><td class="name-cell">${esc(nameOf(n))}</td><td class="compact-stats">${compact}</td><td class="num" style="text-align:left" data-label="Skjutdagar">${v.dagar.size}</td><td class="num" data-label="Skott">${fmt(v.skott)}</td><td class="num" data-label="Köpta">${fmt(v.kopta)}</td><td class="num" data-label="Utestående">${kr(v.out)}</td><td class="act-cell">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="6" style="color:var(--ink-soft)">Inga poster</td></tr>`;
   $("#sendAllFaktura").classList.toggle("hide", !(isAdmin&&hasPrices()&&REMOTE&&list.some(([,v])=>v.out>0)));
   // Admin redigerar priset direkt här; nya poster fryser priset vid registrering.
