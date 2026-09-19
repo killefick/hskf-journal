@@ -37,13 +37,16 @@
     -webkit-font-smoothing:antialiased; min-height:100vh;
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 18px calc(90px + env(safe-area-inset-bottom))}
-  /* Administrationen står på en varm bakgrund, registreringen och lathunden på
-     den svala. Menyerna och korten är sig lika – det är underlaget som byter
-     ton, så man ser vilken del av appen man är i utan att något hoppar. */
-  body.in-admin{--paper:#f6efe6;--paper-glow:#fbf6ef;--line-2:#ece2d6}
-  body.in-admin .card{border-color:#e6dbcd}
-  body.in-admin .admin-toolbar .btn.ghost,
-  body.in-admin .seg{border-color:#e0d3c2}
+  /* I adminvyn byter kontrollerna accent till den varma tonen: flikar, knappar
+     och åtgärder. Bakgrunden, korten och menypanelerna är sig lika – det är
+     bara det man klickar på som byter färg. */
+  #adminView .seg button.on{background:var(--rust);color:#f7efe7}
+  #adminView .btn.ghost{color:var(--rust-d);border-color:#e3cdb9}
+  #adminView .btn.ghost:hover{background:#f9ece0;border-color:#e7c4ab}
+  #adminView .btn.primary{background:var(--rust)}
+  #adminView .btn.primary:hover{filter:brightness(1.08)}
+  #adminView .btn.danger{color:var(--rust-d);border-color:#e3cdb9}
+  #adminView .btn.danger:hover{background:#fbecdf;border-color:#e7c4ab}
 
   header.masthead{position:relative;overflow:hidden;margin:0 0 26px;
     padding:calc(28px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 26px calc(18px + env(safe-area-inset-left));
@@ -672,7 +675,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.126";
+const APP_VERSION = "v.127";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
