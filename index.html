@@ -244,6 +244,15 @@
     #adminView .rowmenu-items .btn{color:var(--rust-d);border-color:#ecd3bf}
     #adminView .rowmenu-items .btn:hover{background:#f6e3d5;border-color:#e7c4ab}
     #adminView .rowmenu-items .btn.danger{color:var(--rust-d)}
+    /* Står man i adminvyn får även huvudmenyn den varma tonen. Hela kromet
+       signalerar då samma sak; att bara färga radmenyerna gjorde signalen
+       beroende av vilken meny man råkade öppna. */
+    body.in-admin .mast-menu{background:#fdf4ec;border-color:#e7c4ab;
+      box-shadow:0 18px 40px -12px rgba(143,63,29,.3)}
+    body.in-admin .mast-menu .icon-btn{color:var(--rust-d);border-color:#ecd3bf}
+    body.in-admin .mast-menu .icon-btn:hover{background:#f6e3d5;border-color:#e7c4ab}
+    body.in-admin .mast-menu .icon-btn[aria-current]{background:#f6e3d5;border-color:var(--rust);color:var(--rust-d)}
+    body.in-admin .mast-menu .user-label{color:#a06a44}
   }
   .act-cell{text-align:right;white-space:nowrap}
   .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -673,7 +682,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.124";
+const APP_VERSION = "v.125";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1706,6 +1715,8 @@ function markCurrentView(){
     if(on) el.setAttribute("aria-current","page"); else el.removeAttribute("aria-current"); };
   const inGuide=!$("#compGuideView").classList.contains("hide");
   const inAdmin=!$("#adminView").classList.contains("hide");
+  // Styr den varma tonen på menyerna i adminvyn (se CSS).
+  document.body.classList.toggle("in-admin", inAdmin && !inGuide);
   mark("#compGuideBtn", inGuide);
   mark("#adminBtn", !inGuide && inAdmin);
   mark("#homeBtn", !inGuide && !inAdmin);
