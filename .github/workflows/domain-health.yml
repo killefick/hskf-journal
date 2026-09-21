@@ -1,0 +1,52 @@
+name: Domain health
+
+# Early warning for hskf.se. On 2026-09-19 the site went down for validating
+# resolvers (expired DNSSEC signatures at Inleed), which also stopped GitHub
+# Pages from renewing the TLS certificate — it expired 14 Sep unnoticed. A
+# failed run here sends a GitHub mail long before visitors notice.
+on:
+  schedule:
+    - cron: "43 6 * * *" # daily, off-the-hour
+  workflow_dispatch:
+
+env:
+  DOMAIN: hskf.se
+  CERT_MIN_DAYS: 14 # GitHub renews ~30 days before expiry; <14 means renewal is stuck
+  DOMAIN_MIN_DAYS: 30
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS resolves via validating resolvers
+        run: |
+          fail=0
+          for url in "https://dns.google/resolve" "https://cloudflare-dns.com/dns-query"; do
+            json=$(curl -fsS --retry 3 --retry-delay 20 -H "accept: application/dns-json" "$url?name=$DOMAIN&type=A")
+            status=$(echo "$json" | jq -r .Status)
+            echo "$url -> Status $status $(echo "$json" | jq -c '.extended_dns_errors // empty')"
+            [ "$status" = "0" ] || fail=1
+          done
+          exit $fail
+
+      - name: TLS certificate not close to expiry
+        run: |
+          end=$(echo | openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" 2>/dev/null \
+                | openssl x509 -noout -enddate | cut -d= -f2)
+          days=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+          echo "Certificate expires $end ($days days left)"
+          [ "$days" -ge "$CERT_MIN_DAYS" ]
+
+      - name: Site answers over HTTPS
+        run: curl -fsS --retry 3 --retry-delay 20 -o /dev/null -w "HTTP %{http_code}\n" "https://$DOMAIN/"
+
+      - name: Domain registration not close to expiry
+        run: |
+          exec 3<>/dev/tcp/whois.iis.se/43
+          printf '%s\r\n' "$DOMAIN" >&3
+          whois=$(cat <&3)
+          echo "$whois" | grep -E '^(state|expires|dnssec):'
+          expires=$(echo "$whois" | awk '/^expires:/ {print $2}')
+          days=$(( ( $(date -d "$expires" +%s) - $(date +%s) ) / 86400 ))
+          echo "Domain expires $expires ($days days left)"
+          [ "$days" -ge "$DOMAIN_MIN_DAYS" ]
