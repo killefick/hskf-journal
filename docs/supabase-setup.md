@@ -2,6 +2,13 @@
 
 These steps are applied in the Supabase project (not via the git repo).
 
+> **Nya tabeller behöver explicita grants (fr.o.m. 2026-10-30).** Supabase slutar
+> då ge nya tabeller i `public` automatisk Data API-åtkomst; utan grant svarar
+> API:t `permission denied`. Lägg grants i samma SQL-block som `create table`
+> (`authenticated` och `service_role`, `anon` bara om tabellen ska läsas
+> utloggad). Befintliga tabeller behåller sina grants – blocken nedan behövs
+> bara vid ombyggnad i ett nytt projekt. RLS styr fortfarande vilka rader som nås.
+
 ## 1. profiles self-read RLS
 
 Each logged-in user must be able to read their own profiles row so the app can
@@ -193,6 +200,10 @@ create table skytt_faktura (
 -- RLS på utan policies: service_role (edge-funktionen) kringgår RLS, alla
 -- direkta authenticated/anon-läsningar och skrivningar nekas.
 alter table skytt_faktura enable row level security;
+
+-- Data API-grants (se notisen överst). Bara service_role – klienten ska
+-- aldrig nå tabellen, så authenticated och anon får ingen grant alls.
+grant select, insert, update, delete on public.skytt_faktura to service_role;
 ```
 
 ### 7b. Brevo-hemligheter och deploy
@@ -415,6 +426,9 @@ create table if not exists public.app_settings (
   value jsonb not null
 );
 alter table public.app_settings enable row level security;
+-- Data API-grants (se notisen överst). anon får läsrätt först i avsnitt 15.
+grant select, insert, update, delete on public.app_settings to authenticated;
+grant select, insert, update, delete on public.app_settings to service_role;
 revoke select on public.app_settings from anon;
 
 drop policy if exists "read" on public.app_settings;

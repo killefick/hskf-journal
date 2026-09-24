@@ -94,6 +94,15 @@ alter table profiles enable row level security;
 create policy "read own profile" on profiles
   for select to authenticated using (id = auth.uid());
 
+-- Data API-åtkomst. Supabase ger inte längre nya tabeller i public automatiska
+-- grants (fr.o.m. 2026-10-30) – utan dessa svarar API:t "permission denied".
+-- Ingen grant till anon: journalen och profilerna kräver inloggning.
+-- RLS-policyerna och triggern nedan styr fortfarande vilka rader som nås.
+grant select, insert, update, delete on public.skjuttillfallen to authenticated;
+grant select, insert, update, delete on public.skjuttillfallen to service_role;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.profiles to service_role;
+
 create or replace function public.is_admin() returns boolean
   language sql security definer stable set search_path = public as $$
     select exists(select 1 from profiles where id = auth.uid() and role = 'admin');
