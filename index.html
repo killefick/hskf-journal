@@ -678,7 +678,7 @@ const ORG = {
    post vid registrering (kolumnen pris); gamla poster behåller sitt pris. */
 let PRIS_PER_SKOTT = 9;
 // Visas i sidfoten. Håll i synk med VERSION i sw.js vid varje deploy.
-const APP_VERSION = "v.128";
+const APP_VERSION = "v.129";
 
 /* Standardantal skott vid tävling: 5 övningsskott + 3 serier à 5 skott.
    Fältet "Antal skott" förifylls därför automatiskt när passet är en tävling
@@ -1900,7 +1900,7 @@ async function sendFaktura(id, year, reminder){
   fakturaMeta[id]={...(fakturaMeta[id]||{}),faktura_skickad:new Date().toISOString()};
   return true;
 }
-$("#shooterTbody").addEventListener("click",async e=>{
+$("#fakturaTbody").addEventListener("click",async e=>{
   if(!isAdmin) return;
   const p=e.target.closest("[data-paid]"), u=e.target.closest("[data-unpaid]");
   const f=e.target.closest("[data-faktura]");
